@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Daylight</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body data-mode="light">
+    <div class="wash" aria-hidden="true"></div>
+    <div class="frost" aria-hidden="true"></div>
+    <main class="ui">
+      <p id="status" class="status">Light</p>
+      <p id="until" class="until">until 18:00</p>
+      <div class="times">
+        <label class="time">
+          <input id="lightAt" type="text" inputmode="numeric" maxlength="5" spellcheck="false" />
+          <span>light</span>
+        </label>
+        <span class="arrow" aria-hidden="true">→</span>
+        <label class="time">
+          <input id="darkAt" type="text" inputmode="numeric" maxlength="5" spellcheck="false" />
+          <span>dark</span>
+        </label>
+      </div>
+      <div class="sites-row">
+        <button id="sitesToggle" class="sites-toggle" type="button">
+          <span id="sitesCount">4 sites</span>
+        </button>
+        <button id="addOpen" class="plus" type="button" aria-label="Add site">+</button>
+      </div>
+      <div id="sitesPanel" class="sites-panel" hidden>
+        <ul id="siteList" class="site-list"></ul>
+        <form id="addForm" class="add-form" hidden>
+          <div class="add-line">
+            <input id="addInput" type="text" autocomplete="off" spellcheck="false" />
+            <button class="plus" type="submit" aria-label="Save site">+</button>
+          </div>
+          <p class="hint">domain or URL</p>
+        </form>
+      </div>
+      <button id="modeBtn" class="mode" type="button">Auto</button>
+    </main>
+    <script src="shared.js"></script>
+    <script src="popup.js"></script>
+  </body>
+</html>
