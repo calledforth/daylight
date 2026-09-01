@@ -6,40 +6,74 @@
     <link rel="stylesheet" href="popup.css" />
   </head>
   <body data-mode="light">
-    <div class="wash" aria-hidden="true"></div>
-    <div class="frost" aria-hidden="true"></div>
-    <main class="ui">
-      <p id="status" class="status">Light</p>
-      <p id="until" class="until">until 18:00</p>
-      <div class="times">
-        <label class="time">
-          <input id="lightAt" type="text" inputmode="numeric" maxlength="5" spellcheck="false" />
-          <span>light</span>
-        </label>
-        <span class="arrow" aria-hidden="true">→</span>
-        <label class="time">
-          <input id="darkAt" type="text" inputmode="numeric" maxlength="5" spellcheck="false" />
-          <span>dark</span>
-        </label>
-      </div>
-      <div class="sites-row">
-        <button id="sitesToggle" class="sites-toggle" type="button">
-          <span id="sitesCount">4 sites</span>
-        </button>
-        <button id="addOpen" class="plus" type="button" aria-label="Add site">+</button>
-      </div>
-      <div id="sitesPanel" class="sites-panel" hidden>
-        <ul id="siteList" class="site-list"></ul>
-        <form id="addForm" class="add-form" hidden>
-          <div class="add-line">
-            <input id="addInput" type="text" autocomplete="off" spellcheck="false" />
-            <button class="plus" type="submit" aria-label="Save site">+</button>
+    <div class="popup">
+      <header class="hero" aria-hidden="false">
+        <div class="hero-wash" aria-hidden="true">
+          <div class="wash wash-light"></div>
+          <div class="wash wash-dark"></div>
+        </div>
+        <div class="hero-frost" aria-hidden="true">
+          <div class="frost frost-light"></div>
+          <div class="frost frost-dark"></div>
+        </div>
+        <div class="hero-text">
+          <p id="status" class="status">Light</p>
+          <p id="until" class="until">until 18:00</p>
+        </div>
+      </header>
+      <main class="ui">
+        <div class="times">
+          <label class="time">
+            <input id="lightAt" type="text" inputmode="numeric" maxlength="5" spellcheck="false" />
+            <span>light</span>
+          </label>
+          <span class="arrow" aria-hidden="true">→</span>
+          <label class="time">
+            <input id="darkAt" type="text" inputmode="numeric" maxlength="5" spellcheck="false" />
+            <span>dark</span>
+          </label>
+        </div>
+        <div id="sitesCompact" class="sites-row">
+          <button id="sitesToggle" class="sites-toggle" type="button">
+            <span id="sitesCount">4 sites</span>
+          </button>
+          <button id="addOpen" class="plus" type="button" aria-label="Add site">+</button>
+        </div>
+        <div id="sitesPanel" class="sites-panel" hidden>
+          <div class="sites-header">
+            <span class="sites-label">Sites</span>
+            <button id="addOpenExpanded" class="plus" type="button" aria-label="Add site">+</button>
           </div>
-          <p class="hint">domain or URL</p>
-        </form>
-      </div>
-      <button id="modeBtn" class="mode" type="button">Auto</button>
-    </main>
+          <form id="addForm" class="add-form" hidden>
+            <div class="add-line">
+              <input
+                id="addInput"
+                type="text"
+                autocomplete="off"
+                spellcheck="false"
+                placeholder="domain or URL"
+                aria-label="Domain or URL"
+              />
+              <button class="plus add-submit" type="submit" aria-label="Save site">+</button>
+            </div>
+            <p class="hint">domain or URL</p>
+          </form>
+          <ul id="siteList" class="site-list"></ul>
+          <p id="syncHint" class="sync-hint" hidden>
+            Sites marked <strong>sync</strong> follow their own deep theme settings.
+          </p>
+        </div>
+        <button
+          id="modeBtn"
+          class="mode"
+          type="button"
+          aria-label="Override mode: cycles Auto, Light, then Dark"
+        >
+          <span class="mode-icon" aria-hidden="true">↻</span>
+          <span id="modeLabel">Auto</span>
+        </button>
+      </main>
+    </div>
     <script src="shared.js"></script>
     <script src="popup.js"></script>
   </body>

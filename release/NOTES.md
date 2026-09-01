@@ -1,3 +1,10 @@
+## 0.1.3
+
+- Popup: smooth light/dark wash crossfade (no hard image swap)
+- Fixed-height hero so expanding the sites list does not stretch background art
+- Site rows show favicons; sync badge has tooltip and list hint
+- Clearer Auto override control and add-site input flow
+
 Packed Zen / Firefox add-on for scheduled per-site light and dark.
 
 Load it temporarily in Zen:
