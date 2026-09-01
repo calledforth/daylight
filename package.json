@@ -1,0 +1,8 @@
+{
+  "name": "daylight",
+  "private": true,
+  "scripts": {
+    "test": "node --test test/schedule.test.js",
+    "pack": "bash scripts/pack.sh"
+  }
+}

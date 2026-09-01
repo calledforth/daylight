@@ -1,0 +1,34 @@
+{
+  "manifest_version": 3,
+  "name": "Daylight",
+  "version": "0.1.1",
+  "description": "Scheduled light and dark for the websites you add. Windows stays dark.",
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "daylight@local",
+      "strict_min_version": "121.0"
+    }
+  },
+  "icons": {
+    "16": "assets/icon-16.png",
+    "32": "assets/icon-32.png",
+    "48": "assets/icon-48.png",
+    "96": "assets/icon-96.png",
+    "128": "assets/icon-128.png"
+  },
+  "action": {
+    "default_title": "Daylight",
+    "default_popup": "popup.html",
+    "default_area": "navbar",
+    "default_icon": {
+      "16": "assets/icon-16.png",
+      "32": "assets/icon-32.png",
+      "48": "assets/icon-48.png"
+    }
+  },
+  "background": {
+    "scripts": ["shared.js", "background.js"]
+  },
+  "permissions": ["storage", "alarms", "tabs", "scripting"],
+  "host_permissions": ["<all_urls>"]
+}
