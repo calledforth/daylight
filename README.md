@@ -6,11 +6,11 @@ Website-only for now. Desktop apps come after this works.
 
 ## Load in Zen (or Firefox)
 
-Use the packed add-on: [`dist/daylight.xpi`](dist/daylight.xpi). It is a normal Firefox zip with `manifest.json` at the root.
+Use the packed add-on (`daylight.xpi`). It is a normal Firefox zip with `manifest.json` at the root, including the sun/moon artwork.
 
 1. Open `about:debugging#/runtime/this-firefox`
 2. Click **Load Temporary Add-on…**
-3. Select `daylight.xpi` (or, from a clone, `extension/manifest.json`)
+3. Select `daylight.xpi`
 
 Click the Daylight icon in the toolbar — it is a small overlay popup, not a tab. Times are typed as `07:00` and `18:00`. Click **4 sites** to see the list, **+** to add a domain. **Auto** cycles Auto → Light → Dark.
 
@@ -20,18 +20,17 @@ Account-synced sites (Linear, ChatGPT, Claude, Notion) show a `sync` pill. Those
 
 Temporary add-ons go away when Zen restarts. Load it again from the same screen.
 
-To rebuild the pack from `extension/`:
+## Develop
 
 ```bash
-./scripts/pack.sh
+git clone https://github.com/calledforth/daylight.git
+cd daylight
+node --test test/schedule.test.js
+./scripts/pack.sh   # writes dist/daylight.xpi from extension/
 ```
+
+To load unpacked, choose `extension/manifest.json` in `about:debugging`. That path needs the PNG washes in `extension/assets/` (they are already inside the packed `.xpi`).
 
 ## What it writes
 
 Each listed site gets **its own** theme setting (usually `localStorage.theme` plus the site’s classes). It does not change the Windows theme and does not flip every website.
-
-## Develop
-
-```bash
-node --test test/schedule.test.js
-```
