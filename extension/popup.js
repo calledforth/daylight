@@ -7,19 +7,72 @@ const untilEl = document.getElementById("until");
 const lightAt = document.getElementById("lightAt");
 const darkAt = document.getElementById("darkAt");
 const sitesCount = document.getElementById("sitesCount");
+const sitesCompact = document.getElementById("sitesCompact");
 const sitesToggle = document.getElementById("sitesToggle");
 const sitesPanel = document.getElementById("sitesPanel");
 const siteList = document.getElementById("siteList");
 const addOpen = document.getElementById("addOpen");
+const addOpenExpanded = document.getElementById("addOpenExpanded");
 const addForm = document.getElementById("addForm");
 const addInput = document.getElementById("addInput");
+const syncHint = document.getElementById("syncHint");
 const modeBtn = document.getElementById("modeBtn");
+const modeLabel = document.getElementById("modeLabel");
 
 let state = { ...DEFAULTS };
 let listOpen = false;
 
+const OVERRIDE_LABELS = {
+  auto: "Auto",
+  light: "Light",
+  dark: "Dark",
+};
+
 function labelForCount(n) {
   return n === 1 ? "1 site" : `${n} sites`;
+}
+
+function faviconUrl(host) {
+  return `https://www.google.com/s2/favicons?domain=${encodeURIComponent(host)}&sz=32`;
+}
+
+function faviconFallbackLetter(host) {
+  const bare = String(host || "").replace(/^www\./, "");
+  return bare.charAt(0).toUpperCase() || "?";
+}
+
+function createFavicon(host) {
+  const img = document.createElement("img");
+  img.className = "site-favicon";
+  img.alt = "";
+  img.width = 16;
+  img.height = 16;
+  img.loading = "lazy";
+  img.referrerPolicy = "no-referrer";
+  img.src = faviconUrl(host);
+  img.addEventListener("error", () => {
+    const fallback = document.createElement("span");
+    fallback.className = "site-favicon is-fallback";
+    fallback.textContent = faviconFallbackLetter(host);
+    fallback.setAttribute("aria-hidden", "true");
+    img.replaceWith(fallback);
+  });
+  return img;
+}
+
+function setListOpen(open, showAdd = false) {
+  listOpen = open;
+  sitesPanel.hidden = !listOpen;
+  sitesCompact.hidden = listOpen;
+  if (!listOpen) {
+    addForm.hidden = true;
+    return;
+  }
+  addForm.hidden = !showAdd;
+  if (showAdd) {
+    addInput.value = "";
+    requestAnimationFrame(() => addInput.focus());
+  }
 }
 
 function render() {
@@ -31,20 +84,36 @@ function render() {
   lightAt.value = lib.parseTime(state.lightAt)?.label ?? "07:00";
   darkAt.value = lib.parseTime(state.darkAt)?.label ?? "18:00";
   sitesCount.textContent = labelForCount(state.sites.length);
-  modeBtn.textContent = state.override === "auto" ? "Auto" : state.override === "light" ? "Light" : "Dark";
+
+  const override = state.override;
+  modeLabel.textContent = OVERRIDE_LABELS[override] ?? "Auto";
+  modeBtn.dataset.override = override;
+  modeBtn.setAttribute(
+    "aria-label",
+    `Override mode: ${OVERRIDE_LABELS[override]}. Click to cycle Auto, Light, then Dark.`,
+  );
+
+  const hasSyncSites = state.sites.some((site) => site.sync);
+  syncHint.hidden = !hasSyncSites || !listOpen;
+
   siteList.replaceChildren(
     ...state.sites.map((site) => {
       const li = document.createElement("li");
+      li.append(createFavicon(site.host));
+
       const host = document.createElement("span");
       host.className = "host";
       host.textContent = site.host;
       li.append(host);
+
       if (site.sync) {
         const sync = document.createElement("span");
         sync.className = "sync";
         sync.textContent = "sync";
+        sync.title = "Deep theme sync — follows the site’s own theme settings";
         li.append(sync);
       }
+
       const remove = document.createElement("button");
       remove.className = "remove";
       remove.type = "button";
@@ -100,29 +169,25 @@ function addSite(value) {
   return true;
 }
 
-function openList(showAdd) {
-  listOpen = true;
-  sitesPanel.hidden = false;
-  addForm.hidden = !showAdd;
-  if (showAdd) {
-    addInput.value = "";
-    addInput.focus();
-  }
+function openAddForm() {
+  setListOpen(true, true);
+  render();
 }
 
 sitesToggle.addEventListener("click", () => {
-  listOpen = !listOpen;
-  sitesPanel.hidden = !listOpen;
-  if (!listOpen) addForm.hidden = true;
+  setListOpen(!listOpen);
+  render();
 });
 
-addOpen.addEventListener("click", () => openList(true));
+addOpen.addEventListener("click", openAddForm);
+addOpenExpanded.addEventListener("click", openAddForm);
 
 addForm.addEventListener("submit", (event) => {
   event.preventDefault();
   if (addSite(addInput.value)) {
     addInput.value = "";
     addForm.hidden = true;
+    render();
   }
 });
 
