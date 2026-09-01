@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Download Daylight</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #12101c;
+        --fg: #f4f0e8;
+        --muted: rgba(244, 240, 232, 0.62);
+        --gold: #e2b15a;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        font-family: "Segoe UI", Inter, system-ui, sans-serif;
+        background: radial-gradient(1200px 600px at 20% -10%, #3a2a12 0%, var(--bg) 55%);
+        color: var(--fg);
+        display: grid;
+        place-items: center;
+        padding: 32px 20px;
+      }
+      main {
+        width: min(440px, 100%);
+      }
+      h1 {
+        margin: 0 0 8px;
+        font-size: 32px;
+        letter-spacing: -0.04em;
+      }
+      p {
+        margin: 0 0 22px;
+        color: var(--muted);
+        line-height: 1.45;
+      }
+      a.btn {
+        display: block;
+        text-align: center;
+        text-decoration: none;
+        color: #1a140c;
+        background: var(--gold);
+        border-radius: 999px;
+        padding: 14px 18px;
+        font-weight: 600;
+      }
+      .alt {
+        display: block;
+        margin-top: 12px;
+        text-align: center;
+        color: var(--muted);
+        font-size: 13px;
+      }
+      ol {
+        margin: 28px 0 0;
+        padding-left: 18px;
+        color: var(--muted);
+        line-height: 1.55;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Daylight for Zen</h1>
+      <p>Packed Firefox add-on (5.3 MB). Temporary load in Zen or Firefox — it is not on AMO yet.</p>
+      <a class="btn" href="/daylight.xpi" download="daylight.xpi">Download daylight.xpi</a>
+      <a class="alt" href="/daylight.zip" download="daylight.zip">or daylight.zip — same files</a>
+      <ol>
+        <li>Open <code>about:debugging#/runtime/this-firefox</code></li>
+        <li>Click <strong>Load Temporary Add-on…</strong></li>
+        <li>Select the downloaded <code>.xpi</code></li>
+        <li>Pin Daylight to the toolbar if it sits in the puzzle menu</li>
+      </ol>
+    </main>
+  </body>
+</html>
