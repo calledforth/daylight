@@ -1,2 +1,4 @@
 node_modules/
 package-lock.json
+download/daylight.xpi
+download/daylight.zip
