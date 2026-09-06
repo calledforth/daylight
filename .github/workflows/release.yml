@@ -1,0 +1,82 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Resolve version from the tag
+        id: version
+        run: echo "value=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Refuse to ship a tag that disagrees with the manifest
+        run: |
+          manifest=$(node -p 'require("./extension/manifest.json").version')
+          if [ "$manifest" != "${{ steps.version.outputs.value }}" ]; then
+            echo "tag is ${{ steps.version.outputs.value }} but manifest.json says $manifest" >&2
+            exit 1
+          fi
+
+      - name: Test
+        run: npm test
+
+      - name: Pack
+        run: npm run pack
+
+      - name: Release notes
+        run: node scripts/notes.mjs "${{ steps.version.outputs.value }}" > dist/notes.md
+
+      # Optional. Without AMO credentials the release still ships the unsigned
+      # XPI, which loads via about:debugging but unloads on restart. With them,
+      # the signed build installs permanently.
+      - name: Check for AMO credentials
+        id: amo
+        env:
+          ISSUER: ${{ secrets.AMO_JWT_ISSUER }}
+          SECRET: ${{ secrets.AMO_JWT_SECRET }}
+        run: |
+          if [ -n "$ISSUER" ] && [ -n "$SECRET" ]; then
+            echo "available=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "available=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::AMO credentials not set, shipping the unsigned XPI only."
+          fi
+
+      - name: Sign with AMO
+        id: sign
+        if: steps.amo.outputs.available == 'true'
+        continue-on-error: true
+        env:
+          ISSUER: ${{ secrets.AMO_JWT_ISSUER }}
+          SECRET: ${{ secrets.AMO_JWT_SECRET }}
+        run: |
+          npx --yes web-ext@8 sign \
+            --source-dir extension \
+            --channel unlisted \
+            --api-key "$ISSUER" \
+            --api-secret "$SECRET" \
+            --artifacts-dir dist/signed
+          signed=$(find dist/signed -name '*.xpi' | head -1)
+          [ -n "$signed" ] && cp "$signed" "dist/daylight-signed.xpi"
+
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          assets=(dist/daylight.xpi)
+          [ -f dist/daylight-signed.xpi ] && assets+=(dist/daylight-signed.xpi)
+          gh release create "$GITHUB_REF_NAME" "${assets[@]}" \
+            --title "Daylight ${{ steps.version.outputs.value }}" \
+            --notes-file dist/notes.md
