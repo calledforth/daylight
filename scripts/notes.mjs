@@ -13,7 +13,16 @@ export function notesFor(version, source) {
   const start = lines.findIndex((line) => line.trim() === `## ${version}`);
   if (start === -1) return null;
   const rest = lines.slice(start + 1);
-  const end = rest.findIndex((line) => /^## /.test(line));
+  // A fenced code block in the notes can contain a line starting with "## ".
+  // Treating that as the next section would truncate the release body.
+  let fenced = false;
+  const end = rest.findIndex((line) => {
+    if (/^\s*```/.test(line)) {
+      fenced = !fenced;
+      return false;
+    }
+    return !fenced && /^## /.test(line);
+  });
   const body = (end === -1 ? rest : rest.slice(0, end)).join("\n").trim();
   return body || null;
 }

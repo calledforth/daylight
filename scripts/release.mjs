@@ -42,7 +42,12 @@ const version = nextVersion(manifest.version, bump);
 if (git("status", "--porcelain")) die("working tree is dirty; commit or stash first");
 const branch = git("rev-parse", "--abbrev-ref", "HEAD");
 if (branch !== "main") die(`on "${branch}"; release from main`);
-if (git("tag", "--list", `v${version}`)) die(`tag v${version} already exists`);
+if (git("tag", "--list", `v${version}`)) die(`tag v${version} already exists locally`);
+// The local check alone is not enough: a tag pushed from elsewhere would only
+// surface after the bump commit had already been made and pushed.
+if (git("ls-remote", "--tags", "origin", `refs/tags/v${version}`)) {
+  die(`tag v${version} already exists on origin`);
+}
 if (!notesFor(version)) die(`release/NOTES.md has no "## ${version}" section; write it first`);
 
 // The manifest can already sit at the target version when a release is cut
@@ -68,7 +73,17 @@ if (!alreadyBumped) {
 }
 
 git("tag", "-a", `v${version}`, "-m", `Daylight ${version}`);
-git("push", "origin", "main");
-git("push", "origin", `v${version}`);
+// One atomic push: main and the tag land together or not at all. Pushing them
+// separately can leave origin with the bump commit but no tag, which the
+// release workflow never sees.
+try {
+  git("push", "--atomic", "origin", "main", `v${version}`);
+} catch (error) {
+  // Leave the bump commit; drop the tag so a rerun takes the already-bumped
+  // path instead of dying on "tag already exists".
+  git("tag", "-d", `v${version}`);
+  console.error(error.stderr?.toString?.() ?? String(error));
+  die(`push failed, local tag v${version} removed; fix the cause and rerun`);
+}
 
 console.log(`pushed v${version}; the release workflow will build and publish it`);
