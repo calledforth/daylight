@@ -93,12 +93,12 @@ function render() {
     `Override mode: ${OVERRIDE_LABELS[override]}. Click to cycle Auto, Light, then Dark.`,
   );
 
-  const hasSyncSites = state.sites.some((site) => site.sync);
-  syncHint.hidden = !hasSyncSites || !listOpen;
+  syncHint.hidden = !listOpen;
 
   siteList.replaceChildren(
     ...state.sites.map((site) => {
       const li = document.createElement("li");
+      li.dataset.host = site.host;
       li.append(createFavicon(site.host));
 
       const host = document.createElement("span");
@@ -106,13 +106,16 @@ function render() {
       host.textContent = site.host;
       li.append(host);
 
-      if (site.sync) {
-        const sync = document.createElement("span");
-        sync.className = "sync";
-        sync.textContent = "sync";
-        sync.title = "Deep theme sync — follows the site’s own theme settings";
-        li.append(sync);
-      }
+      const deep = document.createElement("button");
+      deep.className = site.deep ? "sync is-on" : "sync";
+      deep.type = "button";
+      deep.textContent = "deep";
+      deep.setAttribute("aria-pressed", site.deep ? "true" : "false");
+      deep.title = site.deep
+        ? "Deep mode on — also writes this site’s own theme setting. Turn off if the site set to System already follows the schedule."
+        : "Deep mode off — the site follows the schedule via its System theme option. Turn on only if that does not work.";
+      deep.addEventListener("click", () => toggleDeep(site.host));
+      li.append(deep);
 
       const remove = document.createElement("button");
       remove.className = "remove";
@@ -142,7 +145,8 @@ async function load() {
       lightAt: stored.lightAt || DEFAULTS.lightAt,
       darkAt: stored.darkAt || DEFAULTS.darkAt,
       override: stored.override || DEFAULTS.override,
-      sites: Array.isArray(stored.sites) ? stored.sites : DEFAULTS.sites,
+      sites: lib.normalizeSites(stored.sites, stored.schemaVersion),
+      schemaVersion: lib.SCHEMA_VERSION,
     };
   }
   render();
@@ -164,9 +168,31 @@ function removeSite(host) {
 function addSite(value) {
   const host = lib.hostFromInput(value);
   if (!host) return false;
-  if (state.sites.some((site) => site.host === host)) return true;
-  persist({ sites: [...state.sites, { host, sync: lib.isSyncHost(host) }] });
+  if (state.sites.some((site) => site.host === host)) {
+    flashExisting(host);
+    return true;
+  }
+  persist({ sites: [...state.sites, { host, deep: false }] });
   return true;
+}
+
+function toggleDeep(host) {
+  persist({
+    sites: state.sites.map((site) =>
+      site.host === host ? { ...site, deep: !site.deep } : site,
+    ),
+  });
+}
+
+// Adding a host that is already listed used to look like a silent failure.
+// Deferred, because the caller re-renders the list right after this returns.
+function flashExisting(host) {
+  requestAnimationFrame(() => {
+    const row = siteList.querySelector(`li[data-host="${CSS.escape(host)}"]`);
+    if (!row) return;
+    row.classList.add("is-flash");
+    setTimeout(() => row.classList.remove("is-flash"), 900);
+  });
 }
 
 function openAddForm() {
@@ -208,6 +234,12 @@ modeBtn.addEventListener("click", () => {
 
 api.storage.onChanged.addListener((changes, area) => {
   if (area !== "local") return;
+  // The background writes lastApplied and pendingReload as bookkeeping;
+  // reloading on those would rebuild the site list (and refetch favicons)
+  // once a minute.
+  const ignored = new Set(["lastApplied", "pendingReload"]);
+  const keys = Object.keys(changes).filter((key) => !ignored.has(key));
+  if (!keys.length) return;
   load();
 });
 

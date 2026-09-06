@@ -293,18 +293,44 @@ body[data-mode="dark"] .plus {
 }
 
 .sync {
+  font-family: inherit;
   font-size: 10px;
   letter-spacing: 0.04em;
-  color: #8a5a18;
+  color: inherit;
+  background: transparent;
   padding: 2px 7px;
-  border: 1px solid rgba(138, 90, 24, 0.28);
+  border: 1px solid currentColor;
   border-radius: 999px;
-  cursor: help;
+  cursor: pointer;
+  opacity: 0.28;
+  flex-shrink: 0;
+  transition: opacity 120ms ease;
 }
 
-body[data-mode="dark"] .sync {
+.sync:hover {
+  opacity: 0.55;
+}
+
+.sync.is-on {
+  color: #8a5a18;
+  border-color: rgba(138, 90, 24, 0.45);
+  background: rgba(138, 90, 24, 0.1);
+  opacity: 1;
+}
+
+body[data-mode="dark"] .sync.is-on {
   color: rgba(232, 196, 140, 0.9);
-  border-color: rgba(232, 196, 140, 0.25);
+  border-color: rgba(232, 196, 140, 0.35);
+  background: rgba(232, 196, 140, 0.1);
+}
+
+@keyframes daylight-flash {
+  0%, 100% { background: transparent; }
+  35% { background: rgba(138, 90, 24, 0.18); }
+}
+
+.site-list li.is-flash {
+  animation: daylight-flash 900ms ease;
 }
 
 .sync-hint {

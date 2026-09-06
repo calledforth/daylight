@@ -2,7 +2,7 @@
   "name": "daylight",
   "private": true,
   "scripts": {
-    "test": "node --test test/schedule.test.js",
+    "test": "node --test test/schedule.test.js test/media.test.js",
     "pack": "bash scripts/pack.sh"
   }
 }

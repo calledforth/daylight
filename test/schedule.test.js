@@ -7,6 +7,9 @@ const {
   nextBoundary,
   hostFromInput,
   hostMatches,
+  matchPatterns,
+  normalizeSites,
+  SCHEMA_VERSION,
 } = require("../extension/shared.js");
 
 test("parses times", () => {
@@ -43,4 +46,33 @@ test("normalizes pasted URLs", () => {
 test("matches subdomains", () => {
   assert.equal(hostMatches("linear.app", "app.linear.app"), true);
   assert.equal(hostMatches("linear.app", "github.com"), false);
+});
+
+test("builds match patterns covering subdomains", () => {
+  assert.deepEqual(matchPatterns([{ host: "linear.app" }]), [
+    "*://linear.app/*",
+    "*://*.linear.app/*",
+  ]);
+});
+
+test("rejects hosts that would corrupt a match pattern", () => {
+  assert.deepEqual(matchPatterns([{ host: "not a host" }, { host: "*" }, { host: "a/b.com" }]), []);
+});
+
+test("v1 sites migrate with deep off", () => {
+  const migrated = normalizeSites([{ host: "linear.app", sync: true }], 1);
+  assert.deepEqual(migrated, [{ host: "linear.app", deep: false }]);
+});
+
+test("v2 sites keep their deep flag", () => {
+  const kept = normalizeSites([{ host: "linear.app", deep: true }], SCHEMA_VERSION);
+  assert.deepEqual(kept, [{ host: "linear.app", deep: true }]);
+});
+
+test("dedupes and normalizes hosts on load", () => {
+  const out = normalizeSites(
+    [{ host: "www.Linear.app" }, { host: "https://linear.app/team" }, { host: "junk" }],
+    SCHEMA_VERSION,
+  );
+  assert.deepEqual(out, [{ host: "linear.app", deep: false }]);
 });
