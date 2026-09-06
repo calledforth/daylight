@@ -79,11 +79,13 @@ git("tag", "-a", `v${version}`, "-m", `Daylight ${version}`);
 try {
   git("push", "--atomic", "origin", "main", `v${version}`);
 } catch (error) {
-  // Leave the bump commit; drop the tag so a rerun takes the already-bumped
-  // path instead of dying on "tag already exists".
+  // Nothing landed: --atomic means both refs update or neither. Undo the
+  // local bump entirely, so a plain `release -- patch` rerun recomputes the
+  // same version instead of skipping past it and stacking a second bump.
   git("tag", "-d", `v${version}`);
+  if (!alreadyBumped) git("reset", "--hard", "HEAD~1");
   console.error(error.stderr?.toString?.() ?? String(error));
-  die(`push failed, local tag v${version} removed; fix the cause and rerun`);
+  die(`push failed and the local bump was rolled back; fix the cause and rerun`);
 }
 
 console.log(`pushed v${version}; the release workflow will build and publish it`);
