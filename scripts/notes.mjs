@@ -7,6 +7,12 @@ import { dirname, join } from "node:path";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 
+// Fence handling covers the CommonMark rules that plausibly show up in a
+// changelog. It is deliberately not a full parser: a fence-like line inside a
+// raw HTML block is still misread. Getting that right needs HTML block
+// tracking or a Markdown dependency, and the failure is a release body with
+// too much text in it, visible on the release page and fixed by editing
+// NOTES.md. Not worth either cost here.
 export function notesFor(version, source) {
   const text = source ?? readFileSync(join(root, "release/NOTES.md"), "utf8");
   const lines = text.split(/\r?\n/);
@@ -17,16 +23,16 @@ export function notesFor(version, source) {
   // as the next section would truncate the release body. Fences follow the
   // CommonMark rules that actually bite here: ``` or ~~~, indented at most
   // three spaces, closed only by the same character at least as long as the
-  // opener, with nothing after it.
+  // opener, with nothing but spaces or tabs after it.
   let fence = null;
   const end = rest.findIndex((line) => {
-    const marker = line.match(/^ {0,3}(`{3,}|~{3,})/);
+    const marker = line.match(/^ {0,3}(`{3,}(?!.*`)|~{3,})/);
     if (fence) {
       const closes =
         marker &&
         marker[1][0] === fence.char &&
         marker[1].length >= fence.length &&
-        line.slice(marker[0].length).trim() === "";
+        /^[ \t]*$/.test(line.slice(marker[0].length));
       if (closes) fence = null;
       return false;
     }

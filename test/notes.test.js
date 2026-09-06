@@ -93,3 +93,20 @@ test("a closing fence may not carry trailing content", () => {
   assert.match(body, /still inside/);
   assert.match(body, /after/);
 });
+
+test("a no-break space does not make a closing fence valid", () => {
+  // trim() would treat U+00A0 as whitespace and close the block early;
+  // CommonMark only allows spaces and tabs after a closing fence.
+  const body = notesFor(
+    "1.0.0",
+    joined("## 1.0.0", "```", "```\u00a0", "## still inside", "```", "after"),
+  );
+  assert.match(body, /still inside/);
+  assert.match(body, /after/);
+});
+
+test("a backtick in the info string means it is not a fence opener", () => {
+  const body = notesFor("1.0.0", joined("## 1.0.0", "``` aa ```", "body", "", "## 0.9.0", "older"));
+  assert.match(body, /body/);
+  assert.doesNotMatch(body, /older/);
+});
