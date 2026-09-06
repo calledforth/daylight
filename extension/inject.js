@@ -1,7 +1,12 @@
+// Optional "deep" layer, per site, off by default. Only for sites whose
+// System/Auto option is not JS-driven, where the matchMedia patch alone
+// cannot reach them. Writes the site's own theme setting and swaps whatever
+// theme marker is already on <html>.
 (function daylightInject(global) {
   const MODE = global.__DAYLIGHT_MODE__;
   if (MODE !== "light" && MODE !== "dark") return;
 
+  const OTHER = MODE === "dark" ? "light" : "dark";
   const host = location.hostname.replace(/^www\./, "");
 
   function write(key, value) {
@@ -24,15 +29,32 @@
     }
   }
 
+  // Swap only markers the page actually uses. The previous version removed
+  // "theme-light"/"theme-dark" and added a bare "light"/"dark", which deleted
+  // the working theme class on any site keyed on the prefixed form.
   function applyRoot(mode) {
     const root = document.documentElement;
-    root.classList.remove("light", "dark", "theme-light", "theme-dark");
-    root.classList.add(mode);
+    const targets = [root, document.body].filter(Boolean);
+
+    for (const el of targets) {
+      for (const prefix of ["", "theme-", "color-scheme-", "is-"]) {
+        const from = `${prefix}${OTHER}`;
+        const to = `${prefix}${mode}`;
+        if (el.classList.contains(from)) {
+          el.classList.remove(from);
+          el.classList.add(to);
+        }
+      }
+      for (const attr of ["data-theme", "data-color-mode", "data-colormode", "data-mode", "data-appearance"]) {
+        const value = el.getAttribute(attr);
+        if (value === null) continue;
+        if (value === OTHER || value === `theme-${OTHER}` || value === "system" || value === "auto") {
+          el.setAttribute(attr, value.startsWith("theme-") ? `theme-${mode}` : mode);
+        }
+      }
+    }
+
     root.style.colorScheme = mode;
-    root.dataset.theme = mode;
-    root.dataset.colorMode = mode;
-    root.setAttribute("data-theme", mode);
-    if (document.body) document.body.style.colorScheme = mode;
   }
 
   function applyChatGPT(mode) {
@@ -42,34 +64,20 @@
 
   function applyClaude(mode) {
     write("theme", mode);
-    write("appearance", mode);
-    write("colorMode", mode);
     patchJson("settings", (obj) => {
-      obj.theme = mode;
-      obj.appearance = mode;
+      if ("theme" in obj) obj.theme = mode;
     });
     applyRoot(mode);
   }
 
   function applyLinear(mode) {
     write("theme", mode);
-    write("linear-theme", mode);
     for (let i = 0; i < localStorage.length; i += 1) {
       const key = localStorage.key(i);
-      if (!key) continue;
-      if (/theme/i.test(key)) {
-        const value = localStorage.getItem(key);
-        if (value === "light" || value === "dark" || value === "system") {
-          write(key, mode);
-        }
-      }
+      if (!key || !/theme/i.test(key)) continue;
+      const value = localStorage.getItem(key);
+      if (value === "light" || value === "dark" || value === "system") write(key, mode);
     }
-    applyRoot(mode);
-  }
-
-  function applyCursor(mode) {
-    write("theme", mode);
-    write("cursor-theme", mode);
     applyRoot(mode);
   }
 
@@ -85,15 +93,7 @@
     applyClaude(MODE);
   } else if (host === "linear.app" || host.endsWith(".linear.app")) {
     applyLinear(MODE);
-  } else if (host === "cursor.com" || host.endsWith(".cursor.com")) {
-    applyCursor(MODE);
   } else {
     applyGeneric(MODE);
-  }
-
-  try {
-    global.dispatchEvent(new Event("daylight-theme"));
-  } catch {
-    /* ignore */
   }
 })(globalThis);

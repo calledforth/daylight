@@ -1,18 +1,13 @@
 (function initDaylightLib(root) {
-  const SYNC_HOSTS = new Set([
-    "linear.app",
-    "chatgpt.com",
-    "chat.openai.com",
-    "claude.ai",
-    "notion.so",
-    "www.notion.so",
-  ]);
+  const SCHEMA_VERSION = 2;
 
+  // Sites whose System/Auto theme is known to be JS-driven, so the
+  // matchMedia patch alone is enough. Kept only to seed sensible defaults.
   const DEFAULT_SITES = [
-    { host: "linear.app", sync: true },
-    { host: "chatgpt.com", sync: true },
-    { host: "claude.ai", sync: true },
-    { host: "cursor.com", sync: false },
+    { host: "linear.app", deep: false },
+    { host: "chatgpt.com", deep: false },
+    { host: "claude.ai", deep: false },
+    { host: "cursor.com", deep: false },
   ];
 
   const DEFAULTS = {
@@ -20,6 +15,7 @@
     darkAt: "18:00",
     override: "auto",
     sites: DEFAULT_SITES,
+    schemaVersion: SCHEMA_VERSION,
   };
 
   function pad2(n) {
@@ -89,15 +85,6 @@
     return tab === site || tab.endsWith(`.${site}`);
   }
 
-  function isSyncHost(host) {
-    const bare = String(host || "").replace(/^www\./, "");
-    if (SYNC_HOSTS.has(bare)) return true;
-    for (const known of SYNC_HOSTS) {
-      if (bare.endsWith(`.${known}`)) return true;
-    }
-    return false;
-  }
-
   function tabIsListed(sites, tabUrl) {
     try {
       const host = new URL(tabUrl).hostname;
@@ -107,8 +94,36 @@
     }
   }
 
+  // Match patterns for scripting.registerContentScripts. Bare host plus
+  // every subdomain, mirroring hostMatches.
+  function matchPatterns(sites) {
+    const out = [];
+    for (const site of sites || []) {
+      const host = String(site?.host || "").replace(/^www\./, "").trim();
+      if (!host || !host.includes(".") || /[/*\s]/.test(host)) continue;
+      out.push(`*://${host}/*`, `*://*.${host}/*`);
+    }
+    return [...new Set(out)];
+  }
+
+  // Storage may hold v1 rows shaped { host, sync }. v1 "sync" meant
+  // "poke localStorage", which is now the opt-in deep layer and defaults off.
+  function normalizeSites(sites, schemaVersion) {
+    if (!Array.isArray(sites)) return DEFAULT_SITES.map((s) => ({ ...s }));
+    const migrating = Number(schemaVersion || 1) < SCHEMA_VERSION;
+    const out = [];
+    const seen = new Set();
+    for (const site of sites) {
+      const host = hostFromInput(site?.host);
+      if (!host || seen.has(host)) continue;
+      seen.add(host);
+      out.push({ host, deep: migrating ? false : site?.deep === true });
+    }
+    return out;
+  }
+
   const lib = {
-    SYNC_HOSTS,
+    SCHEMA_VERSION,
     DEFAULT_SITES,
     DEFAULTS,
     parseTime,
@@ -117,8 +132,9 @@
     nextBoundary,
     hostFromInput,
     hostMatches,
-    isSyncHost,
     tabIsListed,
+    matchPatterns,
+    normalizeSites,
   };
 
   root.DaylightLib = lib;
