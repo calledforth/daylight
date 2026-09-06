@@ -18,15 +18,31 @@ If the icon is in the puzzle menu, pin it to the toolbar.
 
 Temporary add-ons go away when Zen restarts. Load the same file again.
 
-## Publish a release
+## Cut a release
 
-From a clone that has `dist/daylight.xpi`:
+Write the section in `release/NOTES.md` first, headed `## x.y.z`, then:
 
 ```
-gh release create v0.2.0 dist/daylight.xpi --repo calledforth/daylight --title "Daylight 0.2.0" --notes-file release/NOTES.md
+npm run release -- patch        # or minor, major, or an explicit 1.0.0
 ```
 
-Or GitHub → Releases → Draft a new release → tag `v0.2.0` → attach `daylight.xpi`.
+That bumps `extension/manifest.json`, commits, tags `vx.y.z`, and pushes. The
+release workflow then tests, packs, and publishes the XPI to a GitHub Release
+with that section as the body. It refuses to run on a dirty tree, off `main`,
+or without a matching notes section. Add `--dry-run` to see the version it
+would pick without touching anything.
+
+CI runs the tests and packs an XPI artifact on every push and PR.
+
+### Permanent installs (optional)
+
+The released XPI is unsigned: it loads through `about:debugging` but unloads
+when the browser restarts. To get a build that installs permanently, add
+`AMO_JWT_ISSUER` and `AMO_JWT_SECRET` (from
+[addons.mozilla.org/developers/addon/api/key](https://addons.mozilla.org/en-US/developers/addon/api/key/))
+as repository secrets. The workflow then also attaches `daylight-signed.xpi`,
+signed by Mozilla on the unlisted channel -- free, not listed in the store, no
+review queue. Without the secrets the release still publishes, unsigned.
 
 ## Develop
 
