@@ -6,16 +6,49 @@
     <link rel="stylesheet" href="popup.css" />
   </head>
   <body data-mode="light">
-    <div class="popup">
-      <header class="hero" aria-hidden="false">
-        <div class="hero-wash" aria-hidden="true">
-          <div class="wash wash-light"></div>
-          <div class="wash wash-dark"></div>
+    <div class="popup is-still">
+      <div class="sky" aria-hidden="true">
+        <div class="sky-layer sky-day"></div>
+        <div class="sky-layer sky-dusk"></div>
+        <div class="sky-layer sky-night"></div>
+        <div class="haze"></div>
+        <div id="stars" class="stars"></div>
+        <div class="clouds">
+          <span class="cloud cloud-1"></span>
+          <span class="cloud cloud-2"></span>
+          <span class="cloud cloud-3"></span>
+          <span class="cloud cloud-4"></span>
+          <span class="cloud cloud-5"></span>
+          <span class="cloud cloud-6"></span>
         </div>
-        <div class="hero-frost" aria-hidden="true">
-          <div class="frost frost-light"></div>
-          <div class="frost frost-dark"></div>
+        <div class="orbit">
+          <div class="arm arm-sun">
+            <div class="body">
+              <div class="sun">
+                <span class="sun-corona"></span>
+                <span class="sun-rays"></span>
+                <span class="sun-streak"></span>
+                <span class="sun-disc"></span>
+                <span class="sun-ghost sun-ghost-1"></span>
+                <span class="sun-ghost sun-ghost-2"></span>
+                <span class="sun-ghost sun-ghost-3"></span>
+              </div>
+            </div>
+          </div>
+          <div class="arm arm-moon">
+            <div class="body">
+              <div class="moon">
+                <span class="moon-halo"></span>
+                <span class="moon-disc"></span>
+              </div>
+            </div>
+          </div>
         </div>
+        <div class="glow"></div>
+        <div class="scrim"></div>
+        <div class="sweep"></div>
+      </div>
+      <header class="hero">
         <div class="hero-text">
           <p id="status" class="status">Light</p>
           <p id="until" class="until">until 18:00</p>
@@ -77,5 +110,6 @@
     </div>
     <script src="shared.js"></script>
     <script src="popup.js"></script>
+    <script src="sky.js"></script>
   </body>
 </html>

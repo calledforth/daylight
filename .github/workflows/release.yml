@@ -45,46 +45,34 @@ jobs:
           VERSION: ${{ steps.version.outputs.value }}
         run: node scripts/notes.mjs "$VERSION" > dist/notes.md
 
-      # Optional. Without AMO credentials the release still ships the unsigned
-      # XPI, which loads via about:debugging but unloads on restart. With them,
-      # the signed build installs permanently.
-      - name: Check for AMO credentials
-        id: amo
-        env:
-          ISSUER: ${{ secrets.AMO_JWT_ISSUER }}
-          SECRET: ${{ secrets.AMO_JWT_SECRET }}
-        run: |
-          if [ -n "$ISSUER" ] && [ -n "$SECRET" ]; then
-            echo "available=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "available=false" >> "$GITHUB_OUTPUT"
-            echo "::notice::AMO credentials not set, shipping the unsigned XPI only."
-          fi
-
       - name: Sign with AMO
-        id: sign
-        if: steps.amo.outputs.available == 'true'
-        continue-on-error: true
         env:
           ISSUER: ${{ secrets.AMO_JWT_ISSUER }}
           SECRET: ${{ secrets.AMO_JWT_SECRET }}
         run: |
-          npx --yes web-ext@8 sign \
+          test -n "$ISSUER" || { echo "AMO_JWT_ISSUER is not configured" >&2; exit 1; }
+          test -n "$SECRET" || { echo "AMO_JWT_SECRET is not configured" >&2; exit 1; }
+          npx --yes web-ext@10.6.0 sign \
             --source-dir extension \
             --channel unlisted \
             --api-key "$ISSUER" \
             --api-secret "$SECRET" \
+            --approval-timeout 900000 \
             --artifacts-dir dist/signed
           signed=$(find dist/signed -name '*.xpi' | head -1)
-          [ -n "$signed" ] && cp "$signed" "dist/daylight-signed.xpi"
+          test -n "$signed" || { echo "AMO did not return a signed XPI" >&2; exit 1; }
+          cp "$signed" "dist/daylight-signed.xpi"
+
+      - name: Write Firefox update manifest
+        run: node scripts/update-manifest.mjs dist/daylight-signed.xpi dist/updates.json
 
       - name: Publish
         env:
           VERSION: ${{ steps.version.outputs.value }}
           GH_TOKEN: ${{ github.token }}
         run: |
-          assets=(dist/daylight.xpi)
-          [ -f dist/daylight-signed.xpi ] && assets+=(dist/daylight-signed.xpi)
-          gh release create "$GITHUB_REF_NAME" "${assets[@]}" \
+          gh release create "$GITHUB_REF_NAME" \
+            dist/daylight-signed.xpi \
+            dist/updates.json \
             --title "Daylight $VERSION" \
             --notes-file dist/notes.md

@@ -2,126 +2,787 @@
   box-sizing: border-box;
 }
 
+/*
+ * Timings. The orbit sweep is the slowest thing on screen on purpose -- the sky
+ * has already finished changing colour by the time the moon finishes climbing,
+ * which is what makes it read as dusk rather than as a crossfade.
+ */
+:root {
+  --sweep: 1400ms;
+  --sky-fade: 1000ms;
+  --ease: cubic-bezier(0.62, 0, 0.3, 1);
+  --glass: rgba(255, 255, 255, 0.34);
+  --glass-edge: rgba(255, 255, 255, 0.5);
+  --glass-blur: blur(16px) saturate(165%);
+  --accent: #7d5410;
+}
+
+body[data-mode="dark"] {
+  --glass: rgba(255, 255, 255, 0.075);
+  --glass-edge: rgba(255, 255, 255, 0.14);
+  --accent: rgba(233, 199, 145, 0.92);
+}
+
 html,
 body {
   margin: 0;
   width: 280px;
   min-height: 0;
   font-family: "Inter", "Segoe UI", system-ui, sans-serif;
-  color: #171717;
-  background-color: #f3ead6;
-  transition: color 500ms ease, background-color 500ms ease;
+  color: #1a1815;
+  /* Matches the bottom of the day gradient so the popup never flashes a bare panel. */
+  background-color: #efe4cf;
+  transition: color var(--sky-fade) ease, background-color var(--sky-fade) ease;
 }
 
 body[data-mode="dark"] {
-  color: #f4f2f8;
-  background-color: #16122a;
+  color: #eceaf4;
+  background-color: #12102a;
 }
 
 .popup {
+  position: relative;
   display: flex;
   flex-direction: column;
-  min-height: 380px;
+  min-height: 400px;
+  isolation: isolate;
 }
 
-/* Fixed-height hero: wash art never stretches when sites list grows */
-.hero {
-  position: relative;
-  flex: 0 0 168px;
-  height: 168px;
-  overflow: hidden;
+/* First paint must land already in the right mode, not sweep into it. */
+.popup.is-still *,
+.popup.is-still *::before,
+.popup.is-still *::after {
+  transition: none !important;
 }
 
-.hero-wash,
-.hero-frost {
+/* ---------------------------------------------------------------- sky ----- */
+
+/*
+ * The sky is full-bleed behind the entire popup, not just the hero. That is what
+ * gives the glass panels below something worth blurring -- backdrop-filter can
+ * only sample pixels inside this document, so the artwork has to reach them.
+ */
+.sky {
   position: absolute;
   inset: 0;
+  overflow: hidden;
+  z-index: 0;
   pointer-events: none;
 }
 
-.hero-wash {
-  z-index: 0;
-}
-
-.hero-frost {
-  z-index: 1;
-}
-
-.wash,
-.frost {
+.sky-layer {
   position: absolute;
   inset: 0;
-  transition: opacity 500ms ease;
+  transition: opacity var(--sky-fade) ease;
 }
 
-.wash {
-  background-size: cover;
-  background-position: center top;
-  background-repeat: no-repeat;
-}
-
-.wash-light {
-  background-image: url("assets/wash-light.png");
+/* The blue has to survive into the upper third or the whole card goes to beige
+   and the sun has nothing to read against. */
+.sky-day {
   opacity: 1;
+  background:
+    radial-gradient(62% 34% at 66% 12%, rgba(255, 228, 158, 0.85) 0%, rgba(255, 228, 158, 0) 66%),
+    linear-gradient(
+      180deg,
+      #5b93c9 0%,
+      #7fadd8 14%,
+      #a8c8e2 28%,
+      #d5dcdd 42%,
+      #eee0c4 60%,
+      #f4e7cf 80%,
+      #f0e1c6 100%
+    );
 }
 
-.wash-dark {
-  background-image: url("assets/wash-dark.png");
+/* The warm middle beat of the transition -- peaks halfway, so the sky passes
+   through gold on the way down instead of cutting straight to indigo. */
+.sky-dusk {
+  opacity: 0;
+  background:
+    radial-gradient(90% 55% at 78% 30%, rgba(255, 166, 96, 0.75) 0%, rgba(255, 166, 96, 0) 66%),
+    linear-gradient(180deg, #4a4a80 0%, #8a6a92 34%, #d98b6a 66%, #f0b183 100%);
+  animation: none;
+}
+
+.sky-night {
+  opacity: 0;
+  background:
+    radial-gradient(70% 34% at 50% 16%, rgba(122, 116, 200, 0.4) 0%, rgba(122, 116, 200, 0) 68%),
+    linear-gradient(
+      180deg,
+      #07061a 0%,
+      #0e0b28 18%,
+      #191340 40%,
+      #221a4d 60%,
+      #1a1440 82%,
+      #0f0b2c 100%
+    );
+}
+
+body[data-mode="dark"] .sky-day {
   opacity: 0;
 }
 
-.frost-light {
+body[data-mode="dark"] .sky-night {
+  opacity: 1;
+}
+
+/* Fire the dusk layer only while a change is in flight, in either direction. */
+.popup.is-sweeping .sky-dusk {
+  animation: dusk-pass var(--sweep) ease-in-out;
+}
+
+@keyframes dusk-pass {
+  0%,
+  100% {
+    opacity: 0;
+  }
+  45% {
+    opacity: 0.55;
+  }
+}
+
+/* ------------------------------------------------------------- glow ------- */
+
+.glow {
+  position: absolute;
+  inset: 0;
+  transition: opacity var(--sky-fade) ease, background var(--sky-fade) ease;
+  background: radial-gradient(46% 26% at 50% 20%, rgba(255, 224, 160, 0.5) 0%, rgba(255, 224, 160, 0) 70%);
+}
+
+body[data-mode="dark"] .glow {
+  background: radial-gradient(46% 26% at 50% 20%, rgba(176, 178, 255, 0.22) 0%, rgba(176, 178, 255, 0) 70%);
+}
+
+/* ------------------------------------------------------------ stars ------- */
+
+/* A faint band of unresolved starlight behind the field. Without it the stars
+   float on flat colour; with it the sky reads as having depth. */
+.haze {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transition: opacity var(--sky-fade) ease;
+  background:
+    radial-gradient(ellipse 62% 20% at 28% 12%, rgba(186, 182, 255, 0.16) 0%, rgba(186, 182, 255, 0) 70%),
+    radial-gradient(ellipse 46% 14% at 76% 24%, rgba(214, 196, 255, 0.12) 0%, rgba(214, 196, 255, 0) 72%);
+  filter: blur(6px);
+}
+
+body[data-mode="dark"] .haze {
+  opacity: 1;
+}
+
+/* Faded out well above the controls -- a star sitting on "until 18:00" reads as
+   a rendering bug, not as sky. */
+.stars {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transition: opacity 700ms ease;
+  mask-image: linear-gradient(180deg, #000 0%, #000 15%, transparent 33%);
+  -webkit-mask-image: linear-gradient(180deg, #000 0%, #000 15%, transparent 33%);
+}
+
+body[data-mode="dark"] .stars {
+  opacity: 1;
+}
+
+.star {
+  position: absolute;
+  border-radius: 50%;
+  /* Slightly cool white, and not pure #fff -- real starlight varies. */
+  background: var(--star-tint, #fff);
+  opacity: 0;
+  box-shadow: 0 0 var(--star-bloom, 3px) rgba(206, 214, 255, 0.9);
+  animation: twinkle var(--twinkle-dur, 3.4s) ease-in-out var(--twinkle-delay, 0s) infinite;
+}
+
+/*
+ * The handful of brightest stars get diffraction spikes. This is the single
+ * detail that separates "scattered dots" from "a photographed night sky", so it
+ * is worth the two pseudo-elements.
+ */
+.star-bright::before,
+.star-bright::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  background: linear-gradient(
+    var(--spike-dir, 90deg),
+    transparent 0%,
+    rgba(224, 230, 255, 0.7) 42%,
+    rgba(255, 255, 255, 0.95) 50%,
+    rgba(224, 230, 255, 0.7) 58%,
+    transparent 100%
+  );
+}
+
+.star-bright::before {
+  width: var(--spike, 11px);
+  height: 1px;
+  margin: -0.5px 0 0 calc(var(--spike, 11px) / -2);
+}
+
+.star-bright::after {
+  width: 1px;
+  height: var(--spike, 11px);
+  margin: calc(var(--spike, 11px) / -2) 0 0 -0.5px;
   background: linear-gradient(
     180deg,
-    rgba(255, 236, 200, 0) 0%,
-    rgba(255, 240, 214, 0.08) 38%,
-    rgba(255, 244, 224, 0.18) 100%
+    transparent 0%,
+    rgba(224, 230, 255, 0.7) 42%,
+    rgba(255, 255, 255, 0.95) 50%,
+    rgba(224, 230, 255, 0.7) 58%,
+    transparent 100%
   );
+}
+
+/* Staggered by height, so night fills in from the top of the sky downward. */
+body[data-mode="dark"] .star {
+  animation:
+    star-rise 620ms ease var(--rise-delay, 0s) both,
+    twinkle var(--twinkle-dur, 3.4s) ease-in-out var(--twinkle-delay, 0s) infinite;
+}
+
+@keyframes star-rise {
+  from {
+    opacity: 0;
+    transform: scale(0.4);
+  }
+  to {
+    opacity: var(--star-peak, 0.8);
+    transform: scale(1);
+  }
+}
+
+@keyframes twinkle {
+  0%,
+  100% {
+    opacity: calc(var(--star-peak, 0.8) * 0.32);
+  }
+  50% {
+    opacity: var(--star-peak, 0.8);
+  }
+}
+
+/* ----------------------------------------------------------- clouds ------- */
+
+/*
+ * Shape comes from the mask, colour from background-color. Doing it that way
+ * means the silhouette can be genuinely lumpy (a stack of offset ellipses, like
+ * cumulus) while the day/night tint stays a single animatable property.
+ */
+.cloud {
+  position: absolute;
+  background: rgba(255, 255, 255, 0.42);
+  transition: background var(--sky-fade) ease, opacity var(--sky-fade) ease;
+  mask-repeat: no-repeat;
+  -webkit-mask-repeat: no-repeat;
+}
+
+body[data-mode="dark"] .cloud {
+  background: rgba(132, 128, 196, 0.3);
+}
+
+/* Two silhouettes, alternated and mirrored, so no two bands read as identical. */
+.cloud-1,
+.cloud-3,
+.cloud-5 {
+  --shape:
+    radial-gradient(ellipse 26% 68% at 20% 66%, #000 0%, rgba(0, 0, 0, 0.5) 58%, transparent 76%),
+    radial-gradient(ellipse 22% 96% at 38% 42%, #000 0%, rgba(0, 0, 0, 0.5) 56%, transparent 74%),
+    radial-gradient(ellipse 28% 74% at 58% 58%, #000 0%, rgba(0, 0, 0, 0.5) 58%, transparent 76%),
+    radial-gradient(ellipse 20% 52% at 78% 72%, #000 0%, rgba(0, 0, 0, 0.45) 56%, transparent 74%),
+    radial-gradient(ellipse 44% 34% at 48% 84%, #000 0%, rgba(0, 0, 0, 0.4) 60%, transparent 80%);
+}
+
+.cloud-2,
+.cloud-4,
+.cloud-6 {
+  --shape:
+    radial-gradient(ellipse 24% 58% at 16% 70%, #000 0%, rgba(0, 0, 0, 0.5) 58%, transparent 76%),
+    radial-gradient(ellipse 30% 88% at 40% 50%, #000 0%, rgba(0, 0, 0, 0.5) 56%, transparent 74%),
+    radial-gradient(ellipse 20% 62% at 62% 64%, #000 0%, rgba(0, 0, 0, 0.5) 58%, transparent 76%),
+    radial-gradient(ellipse 26% 44% at 84% 76%, #000 0%, rgba(0, 0, 0, 0.45) 56%, transparent 74%),
+    radial-gradient(ellipse 50% 30% at 52% 86%, #000 0%, rgba(0, 0, 0, 0.4) 60%, transparent 80%);
+}
+
+.cloud {
+  mask-image: var(--shape);
+  -webkit-mask-image: var(--shape);
+}
+
+/* Six bands at different depths. Higher, smaller, faster clouds read as nearer;
+   the wide slow ones sit back. That spread is what sells the parallax. */
+.cloud-1 {
+  left: -34%;
+  top: 6%;
+  width: 62%;
+  height: 15%;
+  opacity: 0.7;
+  filter: blur(5px);
+  animation: drift 58s linear infinite;
+}
+
+.cloud-2 {
+  left: -48%;
+  top: 15%;
+  width: 84%;
+  height: 19%;
+  opacity: 0.85;
+  filter: blur(7px);
+  animation: drift 86s linear infinite -22s;
+}
+
+.cloud-3 {
+  left: -40%;
+  top: 27%;
+  width: 70%;
+  height: 14%;
+  opacity: 0.6;
+  filter: blur(6px);
+  animation: drift 104s linear infinite -60s;
+}
+
+.cloud-4 {
+  left: -55%;
+  top: 36%;
+  width: 96%;
+  height: 17%;
+  opacity: 0.5;
+  filter: blur(9px);
+  animation: drift 132s linear infinite -40s;
+}
+
+.cloud-5 {
+  left: -30%;
+  top: 2%;
+  width: 48%;
+  height: 10%;
+  opacity: 0.55;
+  filter: blur(4px);
+  animation: drift 70s linear infinite -50s;
+}
+
+.cloud-6 {
+  left: -60%;
+  top: 45%;
+  width: 110%;
+  height: 20%;
+  opacity: 0.34;
+  filter: blur(12px);
+  animation: drift 168s linear infinite -90s;
+}
+
+@keyframes drift {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(340px);
+  }
+}
+
+/* ------------------------------------------------------------ orbit ------- */
+
+/*
+ * Sun and moon hang off opposite ends of one arm pivoting below the card, so a
+ * single rotation sets one and raises the other along a real arc. The inner
+ * .body counter-rotates to keep each disc upright through the sweep.
+ */
+.orbit {
+  position: absolute;
+  left: 50%;
+  top: 196px;
+  width: 0;
+  height: 0;
+  --angle: -16deg;
+  transform: rotate(var(--angle));
+  transition: transform var(--sweep) var(--ease);
+}
+
+body[data-mode="dark"] .orbit {
+  --angle: 164deg;
+}
+
+.arm {
+  position: absolute;
+  left: 0;
+  top: 0;
+}
+
+.arm-sun {
+  transform: translateY(-128px);
+}
+
+.arm-moon {
+  transform: rotate(180deg) translateY(-128px);
+}
+
+.body {
+  transform: rotate(calc(-1 * var(--angle)));
+  transition: transform var(--sweep) var(--ease);
+}
+
+.arm-moon .body {
+  transform: rotate(calc(-1 * var(--angle) - 180deg));
+}
+
+/* Both discs fade at the horizon so nothing pops in or out at the card edge. */
+.sun,
+.moon {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transition: opacity 700ms ease var(--sweep);
+}
+
+body[data-mode="dark"] .sun {
+  opacity: 0;
+}
+
+.moon {
+  opacity: 0;
+}
+
+body[data-mode="dark"] .moon {
   opacity: 1;
 }
 
-.frost-dark {
+.sun {
+  width: 58px;
+  height: 58px;
+  margin: -29px 0 0 -29px;
+}
+
+/* Corona: the wide, soft falloff that makes the orb feel like it is emitting
+   rather than just sitting there. Kept separate from the disc so it can breathe
+   on its own slower cycle. */
+.sun-corona {
+  position: absolute;
+  inset: -58px;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle, rgba(255, 244, 214, 0.45) 0%, rgba(255, 232, 176, 0.17) 22%, rgba(255, 214, 132, 0.05) 42%, rgba(255, 206, 120, 0) 62%);
+  animation: breathe 11s ease-in-out infinite;
+}
+
+/*
+ * A glass sphere, not a glowing ball. Built in layers the way a real refracting
+ * orb reads: a bright rim, a specular cap at the light source, a warm caustic
+ * pooling opposite it, and a mostly-transparent body between them.
+ */
+.sun-disc {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background:
+    /* specular cap */
+    radial-gradient(circle at 32% 26%, rgba(255, 255, 255, 0.95) 0%, rgba(255, 253, 245, 0.42) 16%, rgba(255, 245, 214, 0) 40%),
+    /* secondary highlight, gives the glass thickness */
+    radial-gradient(ellipse 42% 22% at 40% 76%, rgba(255, 255, 255, 0.42) 0%, rgba(255, 250, 228, 0) 74%),
+    /* warm caustic where the light exits */
+    radial-gradient(circle at 74% 66%, rgba(255, 198, 108, 0.62) 0%, rgba(255, 214, 140, 0.2) 36%, rgba(255, 226, 168, 0) 66%),
+    /* body */
+    radial-gradient(circle at 50% 50%, rgba(255, 250, 234, 0.2) 0%, rgba(255, 238, 198, 0.12) 62%, rgba(255, 228, 172, 0.04) 100%);
+  /* The rim is deliberately uneven -- a uniform 1px ring reads as a drawn
+     circle rather than as light catching the edge of glass. */
+  box-shadow:
+    inset 1px 1px 2px rgba(255, 255, 255, 0.9),
+    inset -1px -2px 3px rgba(255, 236, 190, 0.55),
+    inset 3px 4px 12px rgba(255, 248, 224, 0.5),
+    inset -8px -8px 18px rgba(255, 194, 100, 0.34),
+    0 0 20px rgba(255, 230, 168, 0.85),
+    0 0 46px rgba(255, 208, 124, 0.45);
+  animation: breathe 7s ease-in-out infinite;
+}
+
+/* The blown-out point where the light source meets the rim. */
+.sun-disc::after {
+  content: "";
+  position: absolute;
+  right: -4px;
+  top: 40%;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #fff 0%, rgba(255, 250, 228, 0.8) 28%, rgba(255, 226, 150, 0) 70%);
+}
+
+/* Chromatic edge -- a single degree of colour separation on the rim is most of
+   what separates "rendered glass" from "circle with a border". */
+.sun-disc::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: 50%;
+  background: conic-gradient(
+    from 200deg,
+    rgba(255, 176, 96, 0.5) 0deg,
+    rgba(255, 236, 176, 0) 60deg,
+    rgba(168, 214, 255, 0.34) 150deg,
+    rgba(255, 236, 176, 0) 240deg,
+    rgba(255, 176, 96, 0.5) 360deg
+  );
+  mask-image: radial-gradient(circle, transparent 68%, #000 78%, #000 100%);
+  -webkit-mask-image: radial-gradient(circle, transparent 68%, #000 78%, #000 100%);
+}
+
+.sun-rays {
+  position: absolute;
+  inset: -38px;
+  border-radius: 50%;
+  opacity: 0.5;
+  background: conic-gradient(
+    from 0deg,
+    rgba(255, 226, 158, 0) 0deg,
+    rgba(255, 232, 176, 0.42) 12deg,
+    rgba(255, 226, 158, 0) 30deg,
+    rgba(255, 226, 158, 0) 76deg,
+    rgba(255, 238, 190, 0.3) 90deg,
+    rgba(255, 226, 158, 0) 106deg,
+    rgba(255, 226, 158, 0) 166deg,
+    rgba(255, 232, 176, 0.36) 180deg,
+    rgba(255, 226, 158, 0) 196deg,
+    rgba(255, 226, 158, 0) 256deg,
+    rgba(255, 238, 190, 0.28) 270deg,
+    rgba(255, 226, 158, 0) 286deg,
+    rgba(255, 226, 158, 0) 360deg
+  );
+  mask-image: radial-gradient(circle, #000 22%, rgba(0, 0, 0, 0.35) 55%, transparent 74%);
+  -webkit-mask-image: radial-gradient(circle, #000 22%, rgba(0, 0, 0, 0.35) 55%, transparent 74%);
+  animation: spin 44s linear infinite;
+}
+
+/* Anamorphic streak through the specular point. */
+.sun-streak {
+  position: absolute;
+  left: -96px;
+  right: -96px;
+  top: 40%;
+  height: 3px;
+  margin-top: -1.5px;
+  border-radius: 3px;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 226, 158, 0) 0%,
+    rgba(255, 236, 182, 0.28) 22%,
+    rgba(255, 248, 220, 0.78) 46%,
+    rgba(255, 255, 255, 0.95) 62%,
+    rgba(255, 240, 196, 0.58) 78%,
+    rgba(255, 226, 158, 0) 100%
+  );
+  filter: blur(1.5px);
+  animation: breathe 7s ease-in-out infinite;
+}
+
+/* Lens ghosts strung along the flare axis. Cheap, and they are the detail that
+   reads as "photographed" instead of "drawn". */
+.sun-ghost {
+  position: absolute;
+  top: 40%;
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.sun-ghost-1 {
+  left: -46px;
+  width: 13px;
+  height: 13px;
+  margin-top: -6.5px;
+  background: radial-gradient(circle, rgba(255, 214, 150, 0.3) 40%, rgba(255, 214, 150, 0.12) 72%, transparent 100%);
+  box-shadow: inset 0 0 0 1px rgba(255, 236, 190, 0.34);
+}
+
+.sun-ghost-2 {
+  left: -74px;
+  width: 7px;
+  height: 7px;
+  margin-top: -3.5px;
+  background: radial-gradient(circle, rgba(168, 210, 255, 0.36) 30%, transparent 100%);
+}
+
+.sun-ghost-3 {
+  right: -66px;
+  width: 16px;
+  height: 16px;
+  margin-top: -8px;
+  background: radial-gradient(circle, rgba(255, 208, 140, 0.07) 50%, transparent 100%);
+  box-shadow: inset 0 0 0 1px rgba(255, 228, 180, 0.16);
+}
+
+.moon {
+  width: 54px;
+  height: 54px;
+  margin: -27px 0 0 -27px;
+}
+
+/* Separate halo element so the glow survives the crescent mask -- masking the
+   disc would otherwise cut the glow off along the terminator. */
+.moon-halo {
+  position: absolute;
+  inset: -40px;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    rgba(206, 202, 255, 0.3) 0%,
+    rgba(178, 174, 245, 0.14) 30%,
+    rgba(150, 146, 235, 0.05) 52%,
+    rgba(150, 146, 235, 0) 74%
+  );
+  animation: breathe 13s ease-in-out infinite;
+}
+
+.moon-disc {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background:
+    /* craters, largest first -- subtle enough to read as texture, not spots */
+    radial-gradient(circle at 30% 62%, rgba(150, 143, 198, 0.5) 0%, rgba(150, 143, 198, 0.16) 42%, transparent 62%),
+    radial-gradient(circle at 46% 34%, rgba(158, 150, 205, 0.42) 0%, rgba(158, 150, 205, 0.12) 38%, transparent 58%),
+    radial-gradient(circle at 22% 40%, rgba(146, 139, 195, 0.36) 0%, transparent 52%),
+    radial-gradient(circle at 38% 80%, rgba(154, 147, 200, 0.3) 0%, transparent 48%),
+    radial-gradient(circle at 16% 74%, rgba(160, 153, 208, 0.24) 0%, transparent 44%),
+    /* soft limb darkening toward the terminator */
+    radial-gradient(circle at 30% 34%, #fdfcff 0%, #ece8fb 34%, #cfc8ee 66%, #ada5da 100%);
+  mask-image: radial-gradient(circle at 116% 16%, transparent 54%, #000 55.5%);
+  -webkit-mask-image: radial-gradient(circle at 116% 16%, transparent 54%, #000 55.5%);
+  filter: drop-shadow(0 0 10px rgba(200, 196, 255, 0.5));
+  animation: breathe 9s ease-in-out infinite;
+}
+
+/* Bright rim along the lit limb. */
+.moon-disc::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: radial-gradient(circle at 34% 30%, rgba(255, 255, 255, 0.85) 0%, rgba(255, 255, 255, 0) 30%);
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes breathe {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.94;
+  }
+  50% {
+    transform: scale(1.045);
+    opacity: 1;
+  }
+}
+
+/* ------------------------------------------------- scrim + flip sweep ----- */
+
+/* Keeps the controls legible over whatever the sky is doing behind them. */
+.scrim {
+  position: absolute;
+  inset: 0;
+  transition: background var(--sky-fade) ease;
   background: linear-gradient(
     180deg,
-    rgba(20, 12, 48, 0) 0%,
-    rgba(24, 16, 56, 0.12) 45%,
-    rgba(18, 12, 44, 0.22) 100%
+    rgba(255, 250, 238, 0) 34%,
+    rgba(255, 250, 240, 0.34) 62%,
+    rgba(255, 250, 240, 0.52) 100%
   );
+}
+
+body[data-mode="dark"] .scrim {
+  background: linear-gradient(
+    180deg,
+    rgba(12, 10, 34, 0) 34%,
+    rgba(14, 11, 38, 0.34) 62%,
+    rgba(12, 9, 32, 0.52) 100%
+  );
+}
+
+/* One-shot wash of light across the card as the mode flips. */
+.sweep {
+  position: absolute;
+  inset: 0;
   opacity: 0;
 }
 
-body[data-mode="dark"] .wash-light,
-body[data-mode="dark"] .frost-light {
-  opacity: 0;
+.popup.is-sweeping .sweep {
+  animation: sweep-pass var(--sweep) ease-out;
+  background: linear-gradient(
+    155deg,
+    rgba(255, 236, 190, 0) 30%,
+    rgba(255, 240, 205, 0.5) 50%,
+    rgba(255, 236, 190, 0) 70%
+  );
 }
 
-body[data-mode="dark"] .wash-dark,
-body[data-mode="dark"] .frost-dark {
-  opacity: 1;
+body[data-mode="dark"] .popup.is-sweeping .sweep {
+  background: linear-gradient(
+    155deg,
+    rgba(178, 180, 255, 0) 30%,
+    rgba(196, 198, 255, 0.34) 50%,
+    rgba(178, 180, 255, 0) 70%
+  );
+}
+
+@keyframes sweep-pass {
+  0% {
+    opacity: 0;
+    transform: translateY(-46%);
+  }
+  40% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(46%);
+  }
+}
+
+/* ----------------------------------------------------------- content ------ */
+
+.hero {
+  position: relative;
+  z-index: 2;
+  flex: 0 0 178px;
+  height: 178px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
 }
 
 .hero-text {
-  position: relative;
-  z-index: 2;
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: flex-end;
-  height: 100%;
-  padding: 0 20px 12px;
+  padding: 0 20px 10px;
+  text-align: center;
 }
 
 .status {
   margin: 0;
-  font-size: 28px;
+  font-size: 30px;
   font-weight: 600;
-  letter-spacing: -0.03em;
+  letter-spacing: -0.035em;
+  transition: color var(--sky-fade) ease;
+  text-shadow: 0 1px 12px rgba(255, 250, 235, 0.5);
+}
+
+body[data-mode="dark"] .status {
+  text-shadow: 0 1px 16px rgba(10, 8, 30, 0.7);
 }
 
 .until {
-  margin: 2px 0 0;
+  margin: 3px 0 0;
   font-size: 13px;
-  opacity: 0.55;
+  opacity: 0.6;
 }
 
 .ui {
@@ -149,45 +810,86 @@ body[data-mode="dark"] .frost-dark {
   gap: 6px;
 }
 
-.time input,
+/* The glass. backdrop-filter samples the sky layers painted behind these, which
+   is why the sky has to be full-bleed rather than confined to the hero. */
 .sites-row,
-.site-list li,
 .add-line input,
 .mode,
 .plus {
-  background: rgba(255, 255, 255, 0.18);
-  border: 1px solid rgba(255, 255, 255, 0.28);
-  transition: background 500ms ease, border-color 500ms ease;
+  background: var(--glass);
+  border: 1px solid var(--glass-edge);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.35),
+    0 2px 10px rgba(40, 32, 12, 0.06);
+  transition: background var(--sky-fade) ease, border-color var(--sky-fade) ease,
+    box-shadow 200ms ease;
 }
 
-body[data-mode="dark"] .time input,
 body[data-mode="dark"] .sites-row,
-body[data-mode="dark"] .site-list li,
 body[data-mode="dark"] .add-line input,
 body[data-mode="dark"] .mode,
 body[data-mode="dark"] .plus {
-  background: rgba(255, 255, 255, 0.07);
-  border-color: rgba(255, 255, 255, 0.12);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 2px 12px rgba(0, 0, 0, 0.22);
 }
 
+/*
+ * Bare text, not a field. It still takes focus and typing exactly as before --
+ * only the box is gone, which is the whole point: the times should read as part
+ * of the sky, and a chrome input box fights that.
+ */
 .time input {
   width: 100%;
-  height: 40px;
-  border-radius: 12px;
+  border: 0;
+  background: transparent;
+  padding: 2px 0 3px;
+  border-radius: 0;
   color: inherit;
   text-align: center;
-  font: 600 16px/1 "Inter", "Segoe UI", system-ui, sans-serif;
+  font: 600 27px/1.15 "Inter", "Segoe UI", system-ui, sans-serif;
+  letter-spacing: -0.03em;
   outline: none;
+  /* The only affordance: a hairline that fills in on focus. */
+  box-shadow: inset 0 -1px 0 rgba(128, 116, 92, 0);
+  transition: box-shadow 180ms ease, opacity 180ms ease;
+  text-shadow: 0 1px 10px rgba(255, 250, 235, 0.45);
+}
+
+body[data-mode="dark"] .time input {
+  text-shadow: 0 1px 12px rgba(10, 8, 30, 0.6);
+}
+
+.time input:hover {
+  box-shadow: inset 0 -1px 0 rgba(128, 116, 92, 0.22);
+}
+
+.time input:focus {
+  box-shadow: inset 0 -2px 0 var(--accent);
+}
+
+body[data-mode="dark"] .time input:hover {
+  box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.22);
+}
+
+.time input::selection {
+  background: rgba(160, 130, 60, 0.22);
+}
+
+body[data-mode="dark"] .time input::selection {
+  background: rgba(180, 178, 255, 0.28);
 }
 
 .time span,
 .hint {
   font-size: 11px;
-  opacity: 0.5;
+  opacity: 0.55;
 }
 
 .arrow {
-  opacity: 0.35;
+  opacity: 0.4;
   font-size: 14px;
   padding-bottom: 16px;
 }
@@ -214,6 +916,16 @@ body[data-mode="dark"] .plus {
 
 .sites-panel {
   width: 100%;
+  animation: panel-in 260ms ease;
+}
+
+/* Starts partly visible on purpose: the sites list is functional UI, so it must
+   never depend on an animation finishing to be readable. */
+@keyframes panel-in {
+  from {
+    opacity: 0.35;
+    transform: translateY(-6px);
+  }
 }
 
 .sites-header {
@@ -228,7 +940,7 @@ body[data-mode="dark"] .plus {
   font-weight: 600;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  opacity: 0.45;
+  opacity: 0.5;
 }
 
 .plus {
@@ -242,26 +954,59 @@ body[data-mode="dark"] .plus {
   flex-shrink: 0;
 }
 
+.plus:hover,
+.mode:hover,
+.sites-row:hover {
+  border-color: rgba(255, 255, 255, 0.7);
+}
+
+body[data-mode="dark"] .plus:hover,
+body[data-mode="dark"] .mode:hover,
+body[data-mode="dark"] .sites-row:hover {
+  border-color: rgba(255, 255, 255, 0.26);
+}
+
 .add-submit {
   border-radius: 10px;
 }
 
+/* One quiet surface with hairline-separated rows, rather than four stacked
+   cards. Less structure to read, and the sky stays visible through it. */
 .site-list {
   list-style: none;
   margin: 0;
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 6px;
 }
 
 .site-list li {
   display: flex;
   align-items: center;
-  gap: 8px;
-  min-height: 36px;
-  padding: 0 8px 0 10px;
-  border-radius: 12px;
+  gap: 9px;
+  min-height: 38px;
+  padding: 0 6px 0 2px;
+  border-radius: 8px;
+  background: transparent;
+  border: 0;
+  box-shadow: inset 0 -1px 0 rgba(120, 108, 84, 0.14);
+  transition: background 160ms ease;
+}
+
+body[data-mode="dark"] .site-list li {
+  box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.09);
+}
+
+.site-list li:last-child {
+  box-shadow: none;
+}
+
+.site-list li:hover {
+  background: rgba(255, 255, 255, 0.28);
+}
+
+body[data-mode="dark"] .site-list li:hover {
+  background: rgba(255, 255, 255, 0.07);
 }
 
 .site-favicon {
@@ -270,7 +1015,7 @@ body[data-mode="dark"] .plus {
   border-radius: 4px;
   flex-shrink: 0;
   object-fit: contain;
-  background: rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.18);
 }
 
 .site-favicon.is-fallback {
@@ -302,31 +1047,35 @@ body[data-mode="dark"] .plus {
   border: 1px solid currentColor;
   border-radius: 999px;
   cursor: pointer;
-  opacity: 0.28;
+  opacity: 0.3;
   flex-shrink: 0;
   transition: opacity 120ms ease;
 }
 
 .sync:hover {
-  opacity: 0.55;
+  opacity: 0.6;
 }
 
 .sync.is-on {
-  color: #8a5a18;
-  border-color: rgba(138, 90, 24, 0.45);
-  background: rgba(138, 90, 24, 0.1);
+  color: var(--accent);
+  border-color: rgba(125, 84, 16, 0.45);
+  background: rgba(125, 84, 16, 0.1);
   opacity: 1;
 }
 
 body[data-mode="dark"] .sync.is-on {
-  color: rgba(232, 196, 140, 0.9);
-  border-color: rgba(232, 196, 140, 0.35);
-  background: rgba(232, 196, 140, 0.1);
+  border-color: rgba(233, 199, 145, 0.35);
+  background: rgba(233, 199, 145, 0.1);
 }
 
 @keyframes daylight-flash {
-  0%, 100% { background: transparent; }
-  35% { background: rgba(138, 90, 24, 0.18); }
+  0%,
+  100% {
+    background: transparent;
+  }
+  35% {
+    background: rgba(200, 150, 60, 0.26);
+  }
 }
 
 .site-list li.is-flash {
@@ -337,17 +1086,13 @@ body[data-mode="dark"] .sync.is-on {
   margin: 10px 0 0;
   font-size: 10px;
   line-height: 1.4;
-  opacity: 0.45;
+  opacity: 0.5;
   text-align: center;
 }
 
 .sync-hint strong {
   font-weight: 600;
-  color: #8a5a18;
-}
-
-body[data-mode="dark"] .sync-hint strong {
-  color: rgba(232, 196, 140, 0.9);
+  color: var(--accent);
 }
 
 .remove {
@@ -363,7 +1108,7 @@ body[data-mode="dark"] .sync-hint strong {
 }
 
 .remove:hover {
-  opacity: 0.75;
+  opacity: 0.8;
 }
 
 .add-form {
@@ -387,8 +1132,13 @@ body[data-mode="dark"] .sync-hint strong {
 }
 
 .add-line input:focus {
-  border-color: rgba(100, 160, 255, 0.55);
-  box-shadow: 0 0 0 2px rgba(100, 160, 255, 0.18);
+  border-color: rgba(255, 255, 255, 0.75);
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.18);
+}
+
+body[data-mode="dark"] .add-line input:focus {
+  border-color: rgba(180, 178, 255, 0.5);
+  box-shadow: 0 0 0 3px rgba(140, 138, 235, 0.2);
 }
 
 .add-form:not([hidden]) + .site-list {
@@ -401,8 +1151,8 @@ body[data-mode="dark"] .sync-hint strong {
 
 .mode {
   margin-top: 16px;
-  height: 32px;
-  padding: 0 14px;
+  height: 34px;
+  padding: 0 16px;
   border-radius: 999px;
   color: inherit;
   font: 500 12px/1 "Inter", "Segoe UI", system-ui, sans-serif;
@@ -416,16 +1166,40 @@ body[data-mode="dark"] .sync-hint strong {
   font-size: 13px;
   opacity: 0.55;
   line-height: 1;
+  transition: transform 500ms var(--ease);
 }
 
-body[data-mode="dark"] .mode:not([data-override="auto"]) {
-  color: rgba(232, 196, 140, 0.95);
+.mode:hover .mode-icon {
+  transform: rotate(180deg);
 }
 
-body[data-mode="light"] .mode:not([data-override="auto"]) {
-  color: #6b4a12;
+.mode:not([data-override="auto"]) {
+  color: var(--accent);
 }
 
 [hidden] {
   display: none !important;
+}
+
+/* ------------------------------------------------------------ motion ------ */
+
+@media (prefers-reduced-motion: reduce) {
+  .star,
+  .cloud,
+  .sun-disc,
+  .sun-rays,
+  .sun-streak,
+  .moon-disc,
+  .sites-panel {
+    animation: none !important;
+  }
+
+  .orbit,
+  .body {
+    transition-duration: 200ms;
+  }
+
+  body[data-mode="dark"] .star {
+    opacity: var(--star-peak, 0.8);
+  }
 }

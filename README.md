@@ -34,15 +34,16 @@ would pick without touching anything.
 
 CI runs the tests and packs an XPI artifact on every push and PR.
 
-### Permanent installs (optional)
+### Permanent installs
 
-The released XPI is unsigned: it loads through `about:debugging` but unloads
-when the browser restarts. To get a build that installs permanently, add
-`AMO_JWT_ISSUER` and `AMO_JWT_SECRET` (from
-[addons.mozilla.org/developers/addon/api/key](https://addons.mozilla.org/en-US/developers/addon/api/key/))
-as repository secrets. The workflow then also attaches `daylight-signed.xpi`,
-signed by Mozilla on the unlisted channel -- free, not listed in the store, no
-review queue. Without the secrets the release still publishes, unsigned.
+Releases contain `daylight-signed.xpi`, signed by Mozilla on the unlisted
+channel. Install that file once in Zen or Firefox; the browser then checks the
+release's `updates.json` and installs later GitHub releases automatically.
+
+The release workflow requires `AMO_JWT_ISSUER` and `AMO_JWT_SECRET` repository
+secrets from
+[addons.mozilla.org/developers/addon/api/key](https://addons.mozilla.org/en-US/developers/addon/api/key/).
+It deliberately refuses to publish an unsigned release.
 
 ## Develop
 

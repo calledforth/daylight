@@ -1,3 +1,11 @@
+## 0.2.2
+
+- Replaced the heavy bitmap popup backgrounds with an animated CSS sky, orbiting
+  sun and moon, stars, clouds, and glass controls.
+- Reduced the packaged extension by removing roughly 6 MB of obsolete artwork.
+- Releases are now Mozilla-signed for permanent installation and automatically
+  update from GitHub Releases in Zen and Firefox.
+
 ## 0.2.1
 
 - Fixed: a live flip only half-applied in apps that re-theme part of their tree
