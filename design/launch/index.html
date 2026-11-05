@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Daylight launch film</title>
+    <meta name="viewport" content="width=1920, height=1080" />
+    <link rel="stylesheet" href="film.css" />
+  </head>
+  <body>
+    <div id="stage">
+      <!-- ----------------------------------------------------- backdrops -- -->
+      <div class="bg bg-night"></div>
+      <div class="bg bg-day" id="bgDay"></div>
+      <div class="bg bg-dusk" id="bgDusk"></div>
+      <canvas id="stars" width="1920" height="1080"></canvas>
+      <svg id="ridges" class="ridges" viewBox="0 0 1920 1080" preserveAspectRatio="none" aria-hidden="true">
+        <defs>
+          <linearGradient id="rFarN" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2c2470" /><stop offset="0.6" stop-color="#140f3a" /></linearGradient>
+          <linearGradient id="rNearN" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1b1550" /><stop offset="0.5" stop-color="#0b0824" /></linearGradient>
+          <linearGradient id="rFarD" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#a9c2df" /><stop offset="0.6" stop-color="#e9dcc8" /></linearGradient>
+          <linearGradient id="rNearD" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f0c9a2" /><stop offset="0.5" stop-color="#f3e6cf" /></linearGradient>
+        </defs>
+        <g id="ridgesNight">
+          <path fill="url(#rFarN)" d="M0 820 C 220 770 420 790 640 760 C 880 728 1060 790 1300 770 C 1540 750 1720 742 1920 712 L1920 1080 L0 1080 Z" />
+          <path fill="url(#rNearN)" d="M0 900 C 260 860 520 890 800 862 C 1080 834 1320 884 1580 866 C 1720 856 1840 846 1920 836 L1920 1080 L0 1080 Z" />
+        </g>
+        <g id="ridgesDay">
+          <path fill="url(#rFarD)" d="M0 820 C 220 770 420 790 640 760 C 880 728 1060 790 1300 770 C 1540 750 1720 742 1920 712 L1920 1080 L0 1080 Z" />
+          <path fill="url(#rNearD)" d="M0 900 C 260 860 520 890 800 862 C 1080 834 1320 884 1580 866 C 1720 856 1840 846 1920 836 L1920 1080 L0 1080 Z" />
+        </g>
+      </svg>
+      <div class="halo" id="halo"></div>
+
+      <!-- ------------------------------------------------- 1. cold open -- -->
+      <section id="open" class="layer">
+        <div class="mark" id="openMark">
+          <svg viewBox="0 0 128 128" aria-hidden="true">
+            <defs>
+              <radialGradient id="mSun" cx="34%" cy="30%" r="78%">
+                <stop offset="0" stop-color="#fff6dc" /><stop offset="0.38" stop-color="#ffd27a" /><stop offset="0.8" stop-color="#f59a2c" /><stop offset="1" stop-color="#e57a17" />
+              </radialGradient>
+              <linearGradient id="mNight" x1="0.2" y1="0.1" x2="0.85" y2="1">
+                <stop offset="0" stop-color="#6a62e0" /><stop offset="0.55" stop-color="#3a3393" /><stop offset="1" stop-color="#1d1a55" />
+              </linearGradient>
+              <clipPath id="mDisc"><circle cx="64" cy="64" r="54" /></clipPath>
+            </defs>
+            <circle cx="64" cy="64" r="54" fill="url(#mSun)" />
+            <g clip-path="url(#mDisc)">
+              <g id="openNight" transform="translate(56 56)">
+                <circle cx="94" cy="94" r="58" fill="url(#mNight)" />
+                <circle cx="94" cy="94" r="58" fill="none" stroke="#fff3d4" stroke-opacity="0.75" stroke-width="2.5" />
+                <path fill="#f4f2ff" d="M86 70.5c.8 6.3 2.2 7.7 8.5 8.5-6.3.8-7.7 2.2-8.5 8.5-.8-6.3-2.2-7.7-8.5-8.5 6.3-.8 7.7-2.2 8.5-8.5Z" />
+                <circle cx="103" cy="96" r="2.2" fill="#e6e3ff" fill-opacity="0.85" />
+                <circle cx="74" cy="100" r="1.6" fill="#e6e3ff" fill-opacity="0.6" />
+              </g>
+            </g>
+          </svg>
+        </div>
+        <h1 class="open-line" id="openLine">Your sites, on your schedule.</h1>
+      </section>
+
+      <!-- ------------------------------------------- 2. browser + clock -- -->
+      <section id="scene2" class="layer">
+        <div class="clock-block" id="clockBlock">
+          <div class="clock-label">Thursday evening</div>
+          <div class="clock" id="clock"></div>
+        </div>
+        <div class="mq" id="mq"><span class="mq-site">quillmere.app sees</span><code><span class="mq-key">prefers-color-scheme:</span> <span class="mq-val" id="mqVal"></span></code></div>
+        <div class="s2-caption" id="s2Caption">
+          <h2>At 18:00, the page goes dark.</h2>
+          <p>The browser and the desktop stay exactly as they are.</p>
+        </div>
+      </section>
+
+      <div id="camera">
+        <div class="window" id="window">
+          <div class="chrome">
+            <div class="tabstrip">
+              <span class="wc"><i></i><i></i><i></i></span>
+              <div class="tab is-active">
+                <span class="tab-ico qm-ico"></span><span class="tab-title">Winter release · Quillmere</span><span class="tab-x"></span>
+              </div>
+              <div class="tab"><span class="tab-ico dot-ico" style="--c: #7aa58f"></span><span class="tab-title">Inbox · Postwick</span></div>
+              <div class="tab"><span class="tab-ico dot-ico" style="--c: #c99a5c"></span><span class="tab-title">Trail map</span></div>
+              <span class="tab-new"></span>
+            </div>
+            <div class="toolbar">
+              <span class="nav-ico back"></span><span class="nav-ico fwd"></span><span class="nav-ico reload"></span>
+              <div class="omnibox">
+                <span class="lock"></span><span class="url"><b>quillmere.app</b>/notes/winter-release</span>
+              </div>
+              <span class="tb-ico dl"></span>
+              <span class="tb-daylight" id="tbDaylight"><img src="../../extension/assets/icon.svg" alt="" /><span class="tb-ring" id="tbRing"></span></span>
+              <span class="tb-ico menu"></span>
+            </div>
+          </div>
+          <div class="viewport">
+            <div class="page theme-light" id="pageLight"></div>
+            <div class="page theme-dark" id="pageDark"></div>
+          </div>
+        </div>
+        <div class="popup-rig" id="popupRig">
+          <iframe id="popupFrame" title="Daylight popup" scrolling="no"></iframe>
+        </div>
+      </div>
+
+      <!-- ---------------------------------------------- 3. popup captions -- -->
+      <section id="captions" class="layer captions">
+        <div class="cap" data-in="13.9" data-out="16.5">
+          <h2>Light from 07:00.<br />Dark from 18:00.</h2>
+          <p>Set the times once. Daylight keeps to them.</p>
+        </div>
+        <div class="cap" data-in="16.9" data-out="19.7">
+          <h2>Only the sites<br />you choose.</h2>
+          <p>Everything else is left alone.</p>
+        </div>
+        <div class="cap" data-in="20.0" data-out="22.9">
+          <h2>Add any site.</h2>
+          <p>Type a domain or paste a URL.</p>
+        </div>
+        <div class="cap" data-in="23.2" data-out="26.2">
+          <h2>Deep, for the<br />stubborn ones.</h2>
+          <p>Also sets the site’s own theme, for pages that style dark mode in CSS alone.</p>
+        </div>
+        <div class="cap" data-in="27.2" data-out="30.9">
+          <h2>Auto, Light<br />or Dark.</h2>
+          <p>Follow the schedule, or hold one mode.</p>
+        </div>
+      </section>
+
+      <!-- ------------------------------------------------------- 4. close -- -->
+      <section id="outro" class="layer">
+        <img class="tile" id="outroTile" src="../brand/tile.svg" alt="" />
+        <h1 class="name" id="outroName">Daylight</h1>
+        <p class="tagline" id="outroTag">Light by day, dark by night, only where you want it.</p>
+        <p class="platforms" id="outroFor">For Zen &amp; Firefox</p>
+      </section>
+
+      <div id="cursor" class="cursor">
+        <span class="ripple" id="ripple"></span>
+        <svg viewBox="0 0 28 28" aria-hidden="true">
+          <path d="M6 3.5 L6 22.2 L10.6 17.9 L13.6 24.6 L16.7 23.3 L13.8 16.7 L20.2 16.7 Z" fill="#fff" stroke="#14121e" stroke-width="1.5" stroke-linejoin="round" />
+        </svg>
+      </div>
+      <div id="grain"></div>
+    </div>
+    <script src="film.js"></script>
+  </body>
+</html>

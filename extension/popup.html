@@ -6,7 +6,7 @@
     <link rel="stylesheet" href="popup.css" />
   </head>
   <body data-mode="light">
-    <div class="popup is-still">
+    <div id="popup" class="popup is-still" data-view="compact">
       <div class="sky" aria-hidden="true">
         <div class="sky-layer sky-day"></div>
         <div class="sky-layer sky-dusk"></div>
@@ -19,93 +19,152 @@
           <span class="cloud cloud-3"></span>
           <span class="cloud cloud-4"></span>
           <span class="cloud cloud-5"></span>
-          <span class="cloud cloud-6"></span>
         </div>
-        <div class="orbit">
-          <div class="arm arm-sun">
-            <div class="body">
-              <div class="sun">
-                <span class="sun-corona"></span>
-                <span class="sun-rays"></span>
-                <span class="sun-streak"></span>
-                <span class="sun-disc"></span>
-                <span class="sun-ghost sun-ghost-1"></span>
-                <span class="sun-ghost sun-ghost-2"></span>
-                <span class="sun-ghost sun-ghost-3"></span>
+        <div class="celestial">
+          <div class="orbit">
+            <div class="arm arm-sun">
+              <div class="body">
+                <div class="sun">
+                  <span class="sun-corona"></span>
+                  <span class="sun-rays"></span>
+                  <span class="sun-disc"></span>
+                </div>
               </div>
             </div>
-          </div>
-          <div class="arm arm-moon">
-            <div class="body">
-              <div class="moon">
-                <span class="moon-halo"></span>
-                <span class="moon-disc"></span>
+            <div class="arm arm-moon">
+              <div class="body">
+                <div class="moon">
+                  <span class="moon-halo"></span>
+                  <span class="moon-earthshine"></span>
+                  <span class="moon-disc"></span>
+                </div>
               </div>
             </div>
           </div>
         </div>
+        <!-- Layered ridgelines. They give the sun something to set behind and the
+             glass card something to refract; a flat gradient blurs to nothing. -->
+        <svg class="hills" viewBox="0 0 300 500" preserveAspectRatio="none">
+          <defs>
+            <linearGradient id="hillFarDay" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stop-color="#9fbbdc" />
+              <stop offset="0.45" stop-color="#d9dbe0" />
+            </linearGradient>
+            <linearGradient id="hillMidDay" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stop-color="#f0b98a" />
+              <stop offset="0.35" stop-color="#f2d9b8" />
+            </linearGradient>
+            <linearGradient id="hillNearDay" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stop-color="#e9c99a" />
+              <stop offset="0.3" stop-color="#f3e6cf" />
+            </linearGradient>
+            <linearGradient id="hillFarNight" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stop-color="#3a3180" />
+              <stop offset="0.5" stop-color="#1d1748" />
+            </linearGradient>
+            <linearGradient id="hillMidNight" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stop-color="#2a2366" />
+              <stop offset="0.4" stop-color="#16123a" />
+            </linearGradient>
+            <linearGradient id="hillNearNight" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stop-color="#1f1950" />
+              <stop offset="0.3" stop-color="#110d2c" />
+            </linearGradient>
+          </defs>
+          <g class="hills-day">
+            <path fill="url(#hillFarDay)" opacity="0.85" d="M 0 290 C 40 272 70 278 104 268 C 140 257 168 274 204 266 C 240 258 268 264 300 254 L 300 500 L 0 500 Z" />
+            <path fill="url(#hillMidDay)" d="M 0 318 C 36 304 70 312 112 298 C 150 286 186 304 226 296 C 256 290 280 296 300 288 L 300 500 L 0 500 Z" />
+            <path fill="url(#hillNearDay)" d="M 0 346 C 48 330 92 342 140 332 C 190 322 230 340 300 326 L 300 500 L 0 500 Z" />
+          </g>
+          <g class="hills-night">
+            <path fill="url(#hillFarNight)" opacity="0.9" d="M 0 290 C 40 272 70 278 104 268 C 140 257 168 274 204 266 C 240 258 268 264 300 254 L 300 500 L 0 500 Z" />
+            <path fill="url(#hillMidNight)" d="M 0 318 C 36 304 70 312 112 298 C 150 286 186 304 226 296 C 256 290 280 296 300 288 L 300 500 L 0 500 Z" />
+            <path fill="url(#hillNearNight)" d="M 0 346 C 48 330 92 342 140 332 C 190 322 230 340 300 326 L 300 500 L 0 500 Z" />
+          </g>
+        </svg>
         <div class="glow"></div>
-        <div class="scrim"></div>
         <div class="sweep"></div>
       </div>
+
       <header class="hero">
-        <div class="hero-text">
-          <p id="status" class="status">Light</p>
-          <p id="until" class="until">until 18:00</p>
-        </div>
+        <p class="wordmark">Daylight</p>
+        <p id="status" class="status">Light</p>
+        <p id="until" class="until">until 18:00</p>
       </header>
+
       <main class="ui">
-        <div class="times">
-          <label class="time">
-            <input id="lightAt" type="text" inputmode="numeric" maxlength="5" spellcheck="false" />
-            <span>light</span>
-          </label>
-          <span class="arrow" aria-hidden="true">→</span>
-          <label class="time">
-            <input id="darkAt" type="text" inputmode="numeric" maxlength="5" spellcheck="false" />
-            <span>dark</span>
-          </label>
-        </div>
-        <div id="sitesCompact" class="sites-row">
-          <button id="sitesToggle" class="sites-toggle" type="button">
-            <span id="sitesCount">4 sites</span>
-          </button>
-          <button id="addOpen" class="plus" type="button" aria-label="Add site">+</button>
-        </div>
-        <div id="sitesPanel" class="sites-panel" hidden>
-          <div class="sites-header">
-            <span class="sites-label">Sites</span>
-            <button id="addOpenExpanded" class="plus" type="button" aria-label="Add site">+</button>
+        <section class="card glass">
+          <div class="times">
+            <label class="time">
+              <span class="time-label">
+                <svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="3.2" /><path d="M8 1.5v1.6M8 12.9v1.6M1.5 8h1.6M12.9 8h1.6M3.4 3.4l1.1 1.1M11.5 11.5l1.1 1.1M3.4 12.6l1.1-1.1M11.5 4.5l1.1-1.1" /></svg>
+                light
+              </span>
+              <input id="lightAt" type="text" inputmode="numeric" maxlength="5" spellcheck="false" aria-label="Light from" />
+            </label>
+            <span class="track" aria-hidden="true"><span class="track-dot"></span></span>
+            <label class="time">
+              <span class="time-label">
+                dark
+                <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M13.2 10.1A5.6 5.6 0 0 1 5.9 2.8a5.6 5.6 0 1 0 7.3 7.3Z" /></svg>
+              </span>
+              <input id="darkAt" type="text" inputmode="numeric" maxlength="5" spellcheck="false" aria-label="Dark from" />
+            </label>
           </div>
-          <form id="addForm" class="add-form" hidden>
-            <div class="add-line">
-              <input
-                id="addInput"
-                type="text"
-                autocomplete="off"
-                spellcheck="false"
-                placeholder="domain or URL"
-                aria-label="Domain or URL"
-              />
-              <button class="plus add-submit" type="submit" aria-label="Save site">+</button>
+
+          <div class="sites">
+            <div class="sites-bar">
+              <button id="sitesToggle" class="sites-toggle" type="button" aria-expanded="false" aria-controls="drawer">
+                <span id="faviconStack" class="stack" aria-hidden="true"></span>
+                <span id="sitesCount" class="sites-count">4 sites</span>
+                <svg class="chevron" viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 6.5 8 10l3.5-3.5" /></svg>
+              </button>
+              <button id="addOpen" class="icon-btn" type="button" aria-label="Add site" aria-expanded="false">
+                <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3.5v9M3.5 8h9" /></svg>
+              </button>
             </div>
-            <p class="hint">domain or URL</p>
-          </form>
-          <ul id="siteList" class="site-list"></ul>
-          <p id="syncHint" class="sync-hint" hidden>
-            Set each site to its own <strong>System</strong> theme once. Turn on
-            <strong>deep</strong> only for a site that still ignores the schedule.
-          </p>
+
+            <div id="addWrap" class="collapse add-wrap">
+              <form id="addForm" class="add-form">
+                <input
+                  id="addInput"
+                  type="text"
+                  autocomplete="off"
+                  spellcheck="false"
+                  placeholder="example.com or paste a URL"
+                  aria-label="Domain or URL"
+                />
+                <button class="add-submit" type="submit">Add</button>
+              </form>
+            </div>
+
+            <div id="drawer" class="collapse drawer">
+              <div class="drawer-scroll">
+                <ul id="siteList" class="site-list"></ul>
+                <p id="syncHint" class="sync-hint">
+                  Set each site’s own theme to <strong>System</strong> once. Turn on
+                  <strong>deep</strong> only if a site still ignores the schedule.
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <div id="modeGroup" class="segmented glass" role="radiogroup" aria-label="Mode">
+          <span class="seg-thumb" aria-hidden="true"></span>
+          <button class="seg" type="button" role="radio" data-value="auto" aria-checked="true">
+            <svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="5.2" /><path d="M8 2.8v10.4a5.2 5.2 0 0 0 0-10.4Z" class="fill" /></svg>
+            Auto
+          </button>
+          <button class="seg" type="button" role="radio" data-value="light" aria-checked="false">
+            <svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="3" /><path d="M8 1.8v1.4M8 12.8v1.4M1.8 8h1.4M12.8 8h1.4M3.6 3.6l1 1M11.4 11.4l1 1M3.6 12.4l1-1M11.4 4.6l1-1" /></svg>
+            Light
+          </button>
+          <button class="seg" type="button" role="radio" data-value="dark" aria-checked="false">
+            <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M13 10A5.4 5.4 0 0 1 6 3a5.4 5.4 0 1 0 7 7Z" /></svg>
+            Dark
+          </button>
         </div>
-        <button
-          id="modeBtn"
-          class="mode"
-          type="button"
-          aria-label="Override mode: cycles Auto, Light, then Dark"
-        >
-          <span class="mode-icon" aria-hidden="true">↻</span>
-          <span id="modeLabel">Auto</span>
-        </button>
       </main>
     </div>
     <script src="shared.js"></script>
