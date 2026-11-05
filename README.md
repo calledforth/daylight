@@ -12,7 +12,13 @@ Use the packed add-on `dist/daylight.xpi` (build it with `npm run pack`). It is 
 2. Click **Load Temporary Add-on…**
 3. Select `daylight.xpi`
 
-Click the Daylight icon in the toolbar. Times are typed as `07:00` and `18:00`. Click **4 sites** to see the list, **+** to add a domain. **Auto** cycles Auto → Light → Dark.
+Click the Daylight icon in the toolbar. Times are typed as `07:00` and `18:00`. Click **4 sites** to open the list, **+** to add a domain or paste a URL, and pick **Auto**, **Light** or **Dark** at the bottom to follow the schedule or hold one mode.
+
+<p>
+  <img src="design/screenshots/day-compact.png" width="200" alt="Daylight popup, day" />
+  <img src="design/screenshots/day-sites.png" width="200" alt="Daylight popup with the sites list open" />
+  <img src="design/screenshots/night-compact.png" width="200" alt="Daylight popup, night" />
+</p>
 
 If the icon is in the puzzle menu, pin it to the toolbar.
 

@@ -36,7 +36,7 @@
       const size = bright ? 2.1 + rand() * 1.5 : 0.7 + rand() * 1.4;
       // Confined to the sky above the controls, and biased upward on top of that,
       // so the field thins toward the horizon instead of drifting behind the panels.
-      const y = Math.pow(rand(), 1.5) * 34;
+      const y = Math.pow(rand(), 1.4) * 46;
       const props = [
         `left:${(rand() * 100).toFixed(2)}%`,
         `top:${y.toFixed(2)}%`,
@@ -49,7 +49,7 @@
         `--twinkle-dur:${(2.6 + rand() * 3.4).toFixed(2)}s`,
         `--star-peak:${(bright ? 0.75 + rand() * 0.25 : 0.35 + rand() * 0.45).toFixed(2)}`,
         // Stars near the horizon come up last, so night arrives top-down.
-        `--rise-delay:${(0.15 + (y / 34) * 0.5).toFixed(2)}s`,
+        `--rise-delay:${(0.15 + (y / 46) * 0.5).toFixed(2)}s`,
       ];
       if (bright) props.push(`--spike:${(9 + rand() * 9).toFixed(1)}px`);
       star.style.cssText = props.join(";");

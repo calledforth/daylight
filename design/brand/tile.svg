@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- App-tile version of the mark, for store listings and launch material. -->
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#5a8fd0"/>
+      <stop offset="0.45" stop-color="#e7b48c"/>
+      <stop offset="0.7" stop-color="#5b4a9a"/>
+      <stop offset="1" stop-color="#120e33"/>
+    </linearGradient>
+    <radialGradient id="sun" cx="34%" cy="30%" r="78%">
+      <stop offset="0" stop-color="#fff6dc"/>
+      <stop offset="0.38" stop-color="#ffd27a"/>
+      <stop offset="0.8" stop-color="#f59a2c"/>
+      <stop offset="1" stop-color="#e57a17"/>
+    </radialGradient>
+    <linearGradient id="night" x1="0.2" y1="0.1" x2="0.85" y2="1">
+      <stop offset="0" stop-color="#6a62e0"/>
+      <stop offset="0.55" stop-color="#3a3393"/>
+      <stop offset="1" stop-color="#1d1a55"/>
+    </linearGradient>
+    <radialGradient id="bloom" cx="42%" cy="40%" r="50%">
+      <stop offset="0" stop-color="#fff1c8" stop-opacity="0.75"/>
+      <stop offset="1" stop-color="#fff1c8" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="gloss" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fff" stop-opacity="0.35"/>
+      <stop offset="0.5" stop-color="#fff" stop-opacity="0"/>
+    </linearGradient>
+    <clipPath id="disc"><circle cx="256" cy="256" r="150"/></clipPath>
+  </defs>
+  <rect width="512" height="512" rx="114" fill="url(#sky)"/>
+  <circle cx="230" cy="226" r="250" fill="url(#bloom)"/>
+  <circle cx="256" cy="256" r="150" fill="url(#sun)"/>
+  <g clip-path="url(#disc)">
+    <circle cx="339" cy="339" r="161" fill="url(#night)"/>
+    <circle cx="339" cy="339" r="161" fill="none" stroke="#fff3d4" stroke-opacity="0.75" stroke-width="6"/>
+    <path fill="#f4f2ff" d="M316 290c2.2 17.5 6.1 21.4 23.6 23.6-17.5 2.2-21.4 6.1-23.6 23.6-2.2-17.5-6.1-21.4-23.6-23.6 17.5-2.2 21.4-6.1 23.6-23.6Z"/>
+    <circle cx="368" cy="344" r="6" fill="#e6e3ff" fill-opacity="0.85"/>
+    <circle cx="288" cy="362" r="4.5" fill="#e6e3ff" fill-opacity="0.6"/>
+  </g>
+  <rect x="3" y="3" width="506" height="506" rx="111" fill="url(#gloss)" stroke="#fff" stroke-opacity="0.25" stroke-width="2"/>
+</svg>

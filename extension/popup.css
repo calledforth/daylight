@@ -6,45 +6,100 @@
  * Timings. The orbit sweep is the slowest thing on screen on purpose -- the sky
  * has already finished changing colour by the time the moon finishes climbing,
  * which is what makes it read as dusk rather than as a crossfade.
+ *
+ * --morph drives the sites drawer. One curve, one duration for every piece of it
+ * (hero, sun, text, drawer), so the whole card moves as a single object instead
+ * of several animations that happen to overlap.
  */
 :root {
+  --w: 300px;
+  --h: 500px;
   --sweep: 1400ms;
   --sky-fade: 1000ms;
+  --morph: 560ms;
   --ease: cubic-bezier(0.62, 0, 0.3, 1);
-  --glass: rgba(255, 255, 255, 0.34);
-  --glass-edge: rgba(255, 255, 255, 0.5);
-  --glass-blur: blur(16px) saturate(165%);
-  --accent: #7d5410;
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --spring: cubic-bezier(0.34, 1.36, 0.64, 1);
+
+  --ink: #1d1a15;
+  --ink-soft: rgba(29, 26, 21, 0.58);
+  --accent: #9a6110;
+  --accent-soft: rgba(196, 128, 32, 0.16);
+  --hairline: rgba(110, 88, 52, 0.14);
+
+  --glass-top: rgba(255, 255, 255, 0.5);
+  --glass-bottom: rgba(255, 251, 243, 0.26);
+  --glass-rim: linear-gradient(
+    165deg,
+    rgba(255, 255, 255, 0.98) 0%,
+    rgba(255, 255, 255, 0.4) 26%,
+    rgba(255, 255, 255, 0.1) 58%,
+    rgba(255, 255, 255, 0.62) 100%
+  );
+  --glass-shadow: 0 18px 36px -14px rgba(104, 70, 18, 0.32), 0 3px 8px -2px rgba(104, 70, 18, 0.08);
+  --glass-sheen: radial-gradient(120% 60% at 20% -10%, rgba(255, 255, 255, 0.55) 0%, rgba(255, 255, 255, 0) 60%);
+  --thumb: rgba(255, 255, 255, 0.78);
+  --thumb-shadow: 0 1px 2px rgba(104, 70, 18, 0.12), 0 4px 12px -4px rgba(104, 70, 18, 0.22);
+  --chip: rgba(255, 255, 255, 0.6);
+  --row-hover: rgba(255, 255, 255, 0.36);
 }
 
 body[data-mode="dark"] {
-  --glass: rgba(255, 255, 255, 0.075);
-  --glass-edge: rgba(255, 255, 255, 0.14);
-  --accent: rgba(233, 199, 145, 0.92);
+  --ink: #eeecf8;
+  --ink-soft: rgba(232, 230, 250, 0.58);
+  --accent: #f0cf98;
+  --accent-soft: rgba(240, 207, 152, 0.14);
+  --hairline: rgba(255, 255, 255, 0.08);
+
+  --glass-top: rgba(255, 255, 255, 0.1);
+  --glass-bottom: rgba(255, 255, 255, 0.035);
+  --glass-rim: linear-gradient(
+    165deg,
+    rgba(255, 255, 255, 0.36) 0%,
+    rgba(255, 255, 255, 0.1) 28%,
+    rgba(255, 255, 255, 0.03) 60%,
+    rgba(196, 190, 255, 0.2) 100%
+  );
+  --glass-shadow: 0 20px 40px -14px rgba(0, 0, 0, 0.6), 0 3px 8px -2px rgba(0, 0, 0, 0.25);
+  --glass-sheen: radial-gradient(120% 60% at 20% -10%, rgba(214, 210, 255, 0.14) 0%, rgba(214, 210, 255, 0) 60%);
+  --thumb: rgba(255, 255, 255, 0.15);
+  --thumb-shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 6px 14px -6px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.14);
+  --chip: rgba(255, 255, 255, 0.1);
+  --row-hover: rgba(255, 255, 255, 0.06);
 }
 
+/*
+ * A fixed frame. The popup used to grow when the list opened, which made the
+ * browser resize its panel mid-animation and stretched the sky gradient with it.
+ * Now the window never changes size: the hero gives up height and the drawer
+ * takes it, so the only thing that moves is what is inside.
+ */
 html,
 body {
   margin: 0;
-  width: 280px;
-  min-height: 0;
-  font-family: "Inter", "Segoe UI", system-ui, sans-serif;
-  color: #1a1815;
-  /* Matches the bottom of the day gradient so the popup never flashes a bare panel. */
-  background-color: #efe4cf;
+  width: var(--w);
+  height: var(--h);
+  overflow: hidden;
+  font-family: "Inter", "SF Pro Text", "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+  font-feature-settings: "cv11", "ss01";
+  -webkit-font-smoothing: antialiased;
+  color: var(--ink);
+  /* Matches the bottom of the day scene so the popup never flashes a bare panel. */
+  background-color: #f3e6cf;
   transition: color var(--sky-fade) ease, background-color var(--sky-fade) ease;
 }
 
 body[data-mode="dark"] {
-  color: #eceaf4;
-  background-color: #12102a;
+  background-color: #110d2c;
 }
 
 .popup {
   position: relative;
   display: flex;
   flex-direction: column;
-  min-height: 400px;
+  width: var(--w);
+  height: var(--h);
+  overflow: hidden;
   isolation: isolate;
 }
 
@@ -55,13 +110,13 @@ body[data-mode="dark"] {
   transition: none !important;
 }
 
+button {
+  font: inherit;
+  color: inherit;
+}
+
 /* ---------------------------------------------------------------- sky ----- */
 
-/*
- * The sky is full-bleed behind the entire popup, not just the hero. That is what
- * gives the glass panels below something worth blurring -- backdrop-filter can
- * only sample pixels inside this document, so the artwork has to reach them.
- */
 .sky {
   position: absolute;
   inset: 0;
@@ -76,22 +131,11 @@ body[data-mode="dark"] {
   transition: opacity var(--sky-fade) ease;
 }
 
-/* The blue has to survive into the upper third or the whole card goes to beige
-   and the sun has nothing to read against. */
 .sky-day {
   opacity: 1;
   background:
-    radial-gradient(62% 34% at 66% 12%, rgba(255, 228, 158, 0.85) 0%, rgba(255, 228, 158, 0) 66%),
-    linear-gradient(
-      180deg,
-      #5b93c9 0%,
-      #7fadd8 14%,
-      #a8c8e2 28%,
-      #d5dcdd 42%,
-      #eee0c4 60%,
-      #f4e7cf 80%,
-      #f0e1c6 100%
-    );
+    radial-gradient(70% 36% at 40% 20%, rgba(255, 236, 184, 0.9) 0%, rgba(255, 236, 184, 0) 70%),
+    linear-gradient(180deg, #4f8bc6 0%, #78a8d6 16%, #a6c6e2 32%, #d3dde2 46%, #efe2c8 58%, #f3e6cf 100%);
 }
 
 /* The warm middle beat of the transition -- peaks halfway, so the sky passes
@@ -99,24 +143,15 @@ body[data-mode="dark"] {
 .sky-dusk {
   opacity: 0;
   background:
-    radial-gradient(90% 55% at 78% 30%, rgba(255, 166, 96, 0.75) 0%, rgba(255, 166, 96, 0) 66%),
-    linear-gradient(180deg, #4a4a80 0%, #8a6a92 34%, #d98b6a 66%, #f0b183 100%);
-  animation: none;
+    radial-gradient(90% 50% at 70% 46%, rgba(255, 158, 92, 0.8) 0%, rgba(255, 158, 92, 0) 66%),
+    linear-gradient(180deg, #403f7c 0%, #8a6592 30%, #e08b66 52%, #f2b184 100%);
 }
 
 .sky-night {
   opacity: 0;
   background:
-    radial-gradient(70% 34% at 50% 16%, rgba(122, 116, 200, 0.4) 0%, rgba(122, 116, 200, 0) 68%),
-    linear-gradient(
-      180deg,
-      #07061a 0%,
-      #0e0b28 18%,
-      #191340 40%,
-      #221a4d 60%,
-      #1a1440 82%,
-      #0f0b2c 100%
-    );
+    radial-gradient(70% 30% at 40% 18%, rgba(132, 124, 220, 0.38) 0%, rgba(132, 124, 220, 0) 70%),
+    linear-gradient(180deg, #06051a 0%, #0d0a28 18%, #19133f 38%, #2a2160 52%, #1a1444 70%, #110d2c 100%);
 }
 
 body[data-mode="dark"] .sky-day {
@@ -127,7 +162,6 @@ body[data-mode="dark"] .sky-night {
   opacity: 1;
 }
 
-/* Fire the dusk layer only while a change is in flight, in either direction. */
 .popup.is-sweeping .sky-dusk {
   animation: dusk-pass var(--sweep) ease-in-out;
 }
@@ -138,35 +172,31 @@ body[data-mode="dark"] .sky-night {
     opacity: 0;
   }
   45% {
-    opacity: 0.55;
+    opacity: 0.6;
   }
 }
-
-/* ------------------------------------------------------------- glow ------- */
 
 .glow {
   position: absolute;
   inset: 0;
-  transition: opacity var(--sky-fade) ease, background var(--sky-fade) ease;
-  background: radial-gradient(46% 26% at 50% 20%, rgba(255, 224, 160, 0.5) 0%, rgba(255, 224, 160, 0) 70%);
+  transition: opacity var(--sky-fade) ease;
+  background: radial-gradient(60% 22% at 50% 50%, rgba(255, 226, 168, 0.5) 0%, rgba(255, 226, 168, 0) 70%);
 }
 
 body[data-mode="dark"] .glow {
-  background: radial-gradient(46% 26% at 50% 20%, rgba(176, 178, 255, 0.22) 0%, rgba(176, 178, 255, 0) 70%);
+  background: radial-gradient(60% 22% at 50% 50%, rgba(150, 140, 255, 0.14) 0%, rgba(150, 140, 255, 0) 70%);
 }
 
 /* ------------------------------------------------------------ stars ------- */
 
-/* A faint band of unresolved starlight behind the field. Without it the stars
-   float on flat colour; with it the sky reads as having depth. */
 .haze {
   position: absolute;
   inset: 0;
   opacity: 0;
   transition: opacity var(--sky-fade) ease;
   background:
-    radial-gradient(ellipse 62% 20% at 28% 12%, rgba(186, 182, 255, 0.16) 0%, rgba(186, 182, 255, 0) 70%),
-    radial-gradient(ellipse 46% 14% at 76% 24%, rgba(214, 196, 255, 0.12) 0%, rgba(214, 196, 255, 0) 72%);
+    radial-gradient(ellipse 70% 16% at 30% 14%, rgba(186, 182, 255, 0.16) 0%, rgba(186, 182, 255, 0) 70%),
+    radial-gradient(ellipse 50% 12% at 78% 30%, rgba(214, 196, 255, 0.12) 0%, rgba(214, 196, 255, 0) 72%);
   filter: blur(6px);
 }
 
@@ -174,73 +204,54 @@ body[data-mode="dark"] .haze {
   opacity: 1;
 }
 
-/* Faded out well above the controls -- a star sitting on "until 18:00" reads as
-   a rendering bug, not as sky. */
 .stars {
   position: absolute;
   inset: 0;
   opacity: 0;
   transition: opacity 700ms ease;
-  mask-image: linear-gradient(180deg, #000 0%, #000 15%, transparent 33%);
-  -webkit-mask-image: linear-gradient(180deg, #000 0%, #000 15%, transparent 33%);
+  mask-image: linear-gradient(180deg, #000 0%, #000 20%, transparent 36%);
 }
 
 body[data-mode="dark"] .stars {
   opacity: 1;
 }
 
+/* Folded header: keep stars from landing on the title text. */
+.popup[data-view="sites"] .stars {
+  opacity: 0.45;
+}
+
 .star {
   position: absolute;
   border-radius: 50%;
-  /* Slightly cool white, and not pure #fff -- real starlight varies. */
   background: var(--star-tint, #fff);
   opacity: 0;
   box-shadow: 0 0 var(--star-bloom, 3px) rgba(206, 214, 255, 0.9);
   animation: twinkle var(--twinkle-dur, 3.4s) ease-in-out var(--twinkle-delay, 0s) infinite;
 }
 
-/*
- * The handful of brightest stars get diffraction spikes. This is the single
- * detail that separates "scattered dots" from "a photographed night sky", so it
- * is worth the two pseudo-elements.
- */
 .star-bright::before,
 .star-bright::after {
   content: "";
   position: absolute;
   left: 50%;
   top: 50%;
-  background: linear-gradient(
-    var(--spike-dir, 90deg),
-    transparent 0%,
-    rgba(224, 230, 255, 0.7) 42%,
-    rgba(255, 255, 255, 0.95) 50%,
-    rgba(224, 230, 255, 0.7) 58%,
-    transparent 100%
-  );
 }
 
 .star-bright::before {
   width: var(--spike, 11px);
   height: 1px;
   margin: -0.5px 0 0 calc(var(--spike, 11px) / -2);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.9), transparent);
 }
 
 .star-bright::after {
   width: 1px;
   height: var(--spike, 11px);
   margin: calc(var(--spike, 11px) / -2) 0 0 -0.5px;
-  background: linear-gradient(
-    180deg,
-    transparent 0%,
-    rgba(224, 230, 255, 0.7) 42%,
-    rgba(255, 255, 255, 0.95) 50%,
-    rgba(224, 230, 255, 0.7) 58%,
-    transparent 100%
-  );
+  background: linear-gradient(180deg, transparent, rgba(255, 255, 255, 0.9), transparent);
 }
 
-/* Staggered by height, so night fills in from the top of the sky downward. */
 body[data-mode="dark"] .star {
   animation:
     star-rise 620ms ease var(--rise-delay, 0s) both,
@@ -270,111 +281,89 @@ body[data-mode="dark"] .star {
 
 /* ----------------------------------------------------------- clouds ------- */
 
-/*
- * Shape comes from the mask, colour from background-color. Doing it that way
- * means the silhouette can be genuinely lumpy (a stack of offset ellipses, like
- * cumulus) while the day/night tint stays a single animatable property.
- */
+/* Shape from the mask, colour from background-color, so the silhouette can be
+   lumpy like cumulus while the day/night tint stays one animatable property. */
 .cloud {
   position: absolute;
-  background: rgba(255, 255, 255, 0.42);
-  transition: background var(--sky-fade) ease, opacity var(--sky-fade) ease;
+  background: rgba(255, 255, 255, 0.62);
+  transition: background var(--sky-fade) ease;
   mask-repeat: no-repeat;
-  -webkit-mask-repeat: no-repeat;
+  mask-image: var(--shape);
 }
 
 body[data-mode="dark"] .cloud {
-  background: rgba(132, 128, 196, 0.3);
+  background: rgba(130, 124, 205, 0.22);
 }
 
-/* Two silhouettes, alternated and mirrored, so no two bands read as identical. */
 .cloud-1,
 .cloud-3,
 .cloud-5 {
   --shape:
-    radial-gradient(ellipse 26% 68% at 20% 66%, #000 0%, rgba(0, 0, 0, 0.5) 58%, transparent 76%),
-    radial-gradient(ellipse 22% 96% at 38% 42%, #000 0%, rgba(0, 0, 0, 0.5) 56%, transparent 74%),
-    radial-gradient(ellipse 28% 74% at 58% 58%, #000 0%, rgba(0, 0, 0, 0.5) 58%, transparent 76%),
-    radial-gradient(ellipse 20% 52% at 78% 72%, #000 0%, rgba(0, 0, 0, 0.45) 56%, transparent 74%),
-    radial-gradient(ellipse 44% 34% at 48% 84%, #000 0%, rgba(0, 0, 0, 0.4) 60%, transparent 80%);
+    radial-gradient(ellipse 24% 66% at 22% 64%, #000 0%, rgba(0, 0, 0, 0.55) 56%, transparent 76%),
+    radial-gradient(ellipse 22% 96% at 40% 44%, #000 0%, rgba(0, 0, 0, 0.55) 54%, transparent 74%),
+    radial-gradient(ellipse 26% 74% at 60% 58%, #000 0%, rgba(0, 0, 0, 0.55) 56%, transparent 76%),
+    radial-gradient(ellipse 18% 50% at 79% 72%, #000 0%, rgba(0, 0, 0, 0.5) 56%, transparent 74%),
+    radial-gradient(ellipse 46% 30% at 50% 84%, #000 0%, rgba(0, 0, 0, 0.45) 60%, transparent 80%);
 }
 
 .cloud-2,
-.cloud-4,
-.cloud-6 {
+.cloud-4 {
   --shape:
-    radial-gradient(ellipse 24% 58% at 16% 70%, #000 0%, rgba(0, 0, 0, 0.5) 58%, transparent 76%),
-    radial-gradient(ellipse 30% 88% at 40% 50%, #000 0%, rgba(0, 0, 0, 0.5) 56%, transparent 74%),
-    radial-gradient(ellipse 20% 62% at 62% 64%, #000 0%, rgba(0, 0, 0, 0.5) 58%, transparent 76%),
-    radial-gradient(ellipse 26% 44% at 84% 76%, #000 0%, rgba(0, 0, 0, 0.45) 56%, transparent 74%),
-    radial-gradient(ellipse 50% 30% at 52% 86%, #000 0%, rgba(0, 0, 0, 0.4) 60%, transparent 80%);
+    radial-gradient(ellipse 22% 56% at 16% 70%, #000 0%, rgba(0, 0, 0, 0.55) 56%, transparent 76%),
+    radial-gradient(ellipse 28% 88% at 40% 50%, #000 0%, rgba(0, 0, 0, 0.55) 54%, transparent 74%),
+    radial-gradient(ellipse 20% 62% at 62% 64%, #000 0%, rgba(0, 0, 0, 0.55) 56%, transparent 76%),
+    radial-gradient(ellipse 24% 44% at 84% 76%, #000 0%, rgba(0, 0, 0, 0.5) 56%, transparent 74%),
+    radial-gradient(ellipse 50% 28% at 52% 86%, #000 0%, rgba(0, 0, 0, 0.45) 60%, transparent 80%);
 }
 
-.cloud {
-  mask-image: var(--shape);
-  -webkit-mask-image: var(--shape);
-}
-
-/* Six bands at different depths. Higher, smaller, faster clouds read as nearer;
-   the wide slow ones sit back. That spread is what sells the parallax. */
 .cloud-1 {
-  left: -34%;
-  top: 6%;
-  width: 62%;
-  height: 15%;
-  opacity: 0.7;
-  filter: blur(5px);
-  animation: drift 58s linear infinite;
+  left: -30%;
+  top: 9%;
+  width: 56%;
+  height: 9%;
+  opacity: 0.75;
+  filter: blur(3px);
+  animation: drift 62s linear infinite;
 }
 
 .cloud-2 {
   left: -48%;
-  top: 15%;
-  width: 84%;
-  height: 19%;
+  top: 17%;
+  width: 78%;
+  height: 12%;
   opacity: 0.85;
-  filter: blur(7px);
-  animation: drift 86s linear infinite -22s;
+  filter: blur(5px);
+  animation: drift 90s linear infinite -26s;
 }
 
 .cloud-3 {
   left: -40%;
-  top: 27%;
-  width: 70%;
-  height: 14%;
-  opacity: 0.6;
-  filter: blur(6px);
-  animation: drift 104s linear infinite -60s;
+  top: 30%;
+  width: 66%;
+  height: 9%;
+  opacity: 0.7;
+  filter: blur(4px);
+  animation: drift 108s linear infinite -64s;
 }
 
 .cloud-4 {
   left: -55%;
-  top: 36%;
-  width: 96%;
-  height: 17%;
-  opacity: 0.5;
-  filter: blur(9px);
-  animation: drift 132s linear infinite -40s;
+  top: 38%;
+  width: 92%;
+  height: 11%;
+  opacity: 0.55;
+  filter: blur(7px);
+  animation: drift 136s linear infinite -44s;
 }
 
 .cloud-5 {
   left: -30%;
-  top: 2%;
-  width: 48%;
-  height: 10%;
+  top: 3%;
+  width: 44%;
+  height: 7%;
   opacity: 0.55;
-  filter: blur(4px);
-  animation: drift 70s linear infinite -50s;
-}
-
-.cloud-6 {
-  left: -60%;
-  top: 45%;
-  width: 110%;
-  height: 20%;
-  opacity: 0.34;
-  filter: blur(12px);
-  animation: drift 168s linear infinite -90s;
+  filter: blur(3px);
+  animation: drift 74s linear infinite -52s;
 }
 
 @keyframes drift {
@@ -382,30 +371,62 @@ body[data-mode="dark"] .cloud {
     transform: translateX(0);
   }
   to {
-    transform: translateX(340px);
+    transform: translateX(380px);
   }
+}
+
+/* ------------------------------------------------------------- hills ------ */
+
+.hills {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.hills g {
+  transition: opacity var(--sky-fade) ease;
+}
+
+.hills-night,
+body[data-mode="dark"] .hills-day {
+  opacity: 0;
+}
+
+body[data-mode="dark"] .hills-night {
+  opacity: 1;
 }
 
 /* ------------------------------------------------------------ orbit ------- */
 
 /*
- * Sun and moon hang off opposite ends of one arm pivoting below the card, so a
- * single rotation sets one and raises the other along a real arc. The inner
- * .body counter-rotates to keep each disc upright through the sweep.
+ * Sun and moon hang off opposite ends of one arm pivoting behind the hills, so a
+ * single rotation sets one behind the ridge and raises the other along a real
+ * arc. The inner .body counter-rotates to keep each disc upright.
+ *
+ * .celestial wraps the whole rig so the drawer can shrink it into the corner
+ * without touching the orbit's own transform.
  */
+.celestial {
+  position: absolute;
+  inset: 0;
+  transform-origin: 127px 110px;
+  transition: transform var(--morph) var(--ease-out);
+}
+
 .orbit {
   position: absolute;
-  left: 50%;
-  top: 196px;
+  left: 150px;
+  top: 268px;
   width: 0;
   height: 0;
-  --angle: -16deg;
+  --angle: -9deg;
   transform: rotate(var(--angle));
   transition: transform var(--sweep) var(--ease);
 }
 
 body[data-mode="dark"] .orbit {
-  --angle: 164deg;
+  --angle: 171deg;
 }
 
 .arm {
@@ -415,11 +436,11 @@ body[data-mode="dark"] .orbit {
 }
 
 .arm-sun {
-  transform: translateY(-128px);
+  transform: translateY(-158px);
 }
 
 .arm-moon {
-  transform: rotate(180deg) translateY(-128px);
+  transform: rotate(180deg) translateY(-158px);
 }
 
 .body {
@@ -431,19 +452,15 @@ body[data-mode="dark"] .orbit {
   transform: rotate(calc(-1 * var(--angle) - 180deg));
 }
 
-/* Both discs fade at the horizon so nothing pops in or out at the card edge. */
 .sun,
 .moon {
   position: absolute;
   left: 50%;
   top: 50%;
-  transition: opacity 700ms ease var(--sweep);
+  transition: opacity 600ms ease calc(var(--sweep) * 0.6);
 }
 
-body[data-mode="dark"] .sun {
-  opacity: 0;
-}
-
+body[data-mode="dark"] .sun,
 .moon {
   opacity: 0;
 }
@@ -453,187 +470,83 @@ body[data-mode="dark"] .moon {
 }
 
 .sun {
-  width: 58px;
-  height: 58px;
-  margin: -29px 0 0 -29px;
-}
-
-/* Corona: the wide, soft falloff that makes the orb feel like it is emitting
-   rather than just sitting there. Kept separate from the disc so it can breathe
-   on its own slower cycle. */
-.sun-corona {
-  position: absolute;
-  inset: -58px;
-  border-radius: 50%;
-  background:
-    radial-gradient(circle, rgba(255, 244, 214, 0.45) 0%, rgba(255, 232, 176, 0.17) 22%, rgba(255, 214, 132, 0.05) 42%, rgba(255, 206, 120, 0) 62%);
-  animation: breathe 11s ease-in-out infinite;
-}
-
-/*
- * A glass sphere, not a glowing ball. Built in layers the way a real refracting
- * orb reads: a bright rim, a specular cap at the light source, a warm caustic
- * pooling opposite it, and a mostly-transparent body between them.
- */
-.sun-disc {
-  position: absolute;
-  inset: 0;
-  border-radius: 50%;
-  background:
-    /* specular cap */
-    radial-gradient(circle at 32% 26%, rgba(255, 255, 255, 0.95) 0%, rgba(255, 253, 245, 0.42) 16%, rgba(255, 245, 214, 0) 40%),
-    /* secondary highlight, gives the glass thickness */
-    radial-gradient(ellipse 42% 22% at 40% 76%, rgba(255, 255, 255, 0.42) 0%, rgba(255, 250, 228, 0) 74%),
-    /* warm caustic where the light exits */
-    radial-gradient(circle at 74% 66%, rgba(255, 198, 108, 0.62) 0%, rgba(255, 214, 140, 0.2) 36%, rgba(255, 226, 168, 0) 66%),
-    /* body */
-    radial-gradient(circle at 50% 50%, rgba(255, 250, 234, 0.2) 0%, rgba(255, 238, 198, 0.12) 62%, rgba(255, 228, 172, 0.04) 100%);
-  /* The rim is deliberately uneven -- a uniform 1px ring reads as a drawn
-     circle rather than as light catching the edge of glass. */
-  box-shadow:
-    inset 1px 1px 2px rgba(255, 255, 255, 0.9),
-    inset -1px -2px 3px rgba(255, 236, 190, 0.55),
-    inset 3px 4px 12px rgba(255, 248, 224, 0.5),
-    inset -8px -8px 18px rgba(255, 194, 100, 0.34),
-    0 0 20px rgba(255, 230, 168, 0.85),
-    0 0 46px rgba(255, 208, 124, 0.45);
-  animation: breathe 7s ease-in-out infinite;
-}
-
-/* The blown-out point where the light source meets the rim. */
-.sun-disc::after {
-  content: "";
-  position: absolute;
-  right: -4px;
-  top: 40%;
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  background: radial-gradient(circle, #fff 0%, rgba(255, 250, 228, 0.8) 28%, rgba(255, 226, 150, 0) 70%);
-}
-
-/* Chromatic edge -- a single degree of colour separation on the rim is most of
-   what separates "rendered glass" from "circle with a border". */
-.sun-disc::before {
-  content: "";
-  position: absolute;
-  inset: -1px;
-  border-radius: 50%;
-  background: conic-gradient(
-    from 200deg,
-    rgba(255, 176, 96, 0.5) 0deg,
-    rgba(255, 236, 176, 0) 60deg,
-    rgba(168, 214, 255, 0.34) 150deg,
-    rgba(255, 236, 176, 0) 240deg,
-    rgba(255, 176, 96, 0.5) 360deg
-  );
-  mask-image: radial-gradient(circle, transparent 68%, #000 78%, #000 100%);
-  -webkit-mask-image: radial-gradient(circle, transparent 68%, #000 78%, #000 100%);
-}
-
-.sun-rays {
-  position: absolute;
-  inset: -38px;
-  border-radius: 50%;
-  opacity: 0.5;
-  background: conic-gradient(
-    from 0deg,
-    rgba(255, 226, 158, 0) 0deg,
-    rgba(255, 232, 176, 0.42) 12deg,
-    rgba(255, 226, 158, 0) 30deg,
-    rgba(255, 226, 158, 0) 76deg,
-    rgba(255, 238, 190, 0.3) 90deg,
-    rgba(255, 226, 158, 0) 106deg,
-    rgba(255, 226, 158, 0) 166deg,
-    rgba(255, 232, 176, 0.36) 180deg,
-    rgba(255, 226, 158, 0) 196deg,
-    rgba(255, 226, 158, 0) 256deg,
-    rgba(255, 238, 190, 0.28) 270deg,
-    rgba(255, 226, 158, 0) 286deg,
-    rgba(255, 226, 158, 0) 360deg
-  );
-  mask-image: radial-gradient(circle, #000 22%, rgba(0, 0, 0, 0.35) 55%, transparent 74%);
-  -webkit-mask-image: radial-gradient(circle, #000 22%, rgba(0, 0, 0, 0.35) 55%, transparent 74%);
-  animation: spin 44s linear infinite;
-}
-
-/* Anamorphic streak through the specular point. */
-.sun-streak {
-  position: absolute;
-  left: -96px;
-  right: -96px;
-  top: 40%;
-  height: 3px;
-  margin-top: -1.5px;
-  border-radius: 3px;
-  background: linear-gradient(
-    90deg,
-    rgba(255, 226, 158, 0) 0%,
-    rgba(255, 236, 182, 0.28) 22%,
-    rgba(255, 248, 220, 0.78) 46%,
-    rgba(255, 255, 255, 0.95) 62%,
-    rgba(255, 240, 196, 0.58) 78%,
-    rgba(255, 226, 158, 0) 100%
-  );
-  filter: blur(1.5px);
-  animation: breathe 7s ease-in-out infinite;
-}
-
-/* Lens ghosts strung along the flare axis. Cheap, and they are the detail that
-   reads as "photographed" instead of "drawn". */
-.sun-ghost {
-  position: absolute;
-  top: 40%;
-  border-radius: 50%;
-  pointer-events: none;
-}
-
-.sun-ghost-1 {
-  left: -46px;
-  width: 13px;
-  height: 13px;
-  margin-top: -6.5px;
-  background: radial-gradient(circle, rgba(255, 214, 150, 0.3) 40%, rgba(255, 214, 150, 0.12) 72%, transparent 100%);
-  box-shadow: inset 0 0 0 1px rgba(255, 236, 190, 0.34);
-}
-
-.sun-ghost-2 {
-  left: -74px;
-  width: 7px;
-  height: 7px;
-  margin-top: -3.5px;
-  background: radial-gradient(circle, rgba(168, 210, 255, 0.36) 30%, transparent 100%);
-}
-
-.sun-ghost-3 {
-  right: -66px;
-  width: 16px;
-  height: 16px;
-  margin-top: -8px;
-  background: radial-gradient(circle, rgba(255, 208, 140, 0.07) 50%, transparent 100%);
-  box-shadow: inset 0 0 0 1px rgba(255, 228, 180, 0.16);
-}
-
-.moon {
   width: 54px;
   height: 54px;
   margin: -27px 0 0 -27px;
 }
 
-/* Separate halo element so the glow survives the crescent mask -- masking the
-   disc would otherwise cut the glow off along the terminator. */
-.moon-halo {
+.sun-corona {
   position: absolute;
-  inset: -40px;
+  inset: -70px;
   border-radius: 50%;
   background: radial-gradient(
     circle,
-    rgba(206, 202, 255, 0.3) 0%,
+    rgba(255, 246, 220, 0.62) 0%,
+    rgba(255, 232, 178, 0.26) 22%,
+    rgba(255, 214, 136, 0.08) 42%,
+    rgba(255, 206, 120, 0) 64%
+  );
+  animation: breathe 11s ease-in-out infinite;
+}
+
+.sun-rays {
+  position: absolute;
+  inset: -42px;
+  border-radius: 50%;
+  opacity: 0.55;
+  background: repeating-conic-gradient(
+    from 0deg,
+    rgba(255, 238, 196, 0.5) 0deg 3deg,
+    rgba(255, 238, 196, 0) 7deg 30deg
+  );
+  mask-image: radial-gradient(circle, #000 30%, rgba(0, 0, 0, 0.3) 52%, transparent 70%);
+  animation: spin 90s linear infinite;
+}
+
+/* A luminous body, not a flat dot: white-hot core, warm limb, soft bloom. */
+.sun-disc {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 38% 34%, #ffffff 0%, #fffaf0 26%, #ffeec8 56%, #ffd88c 84%, #ffc867 100%);
+  box-shadow:
+    inset -4px -6px 12px rgba(255, 176, 74, 0.45),
+    inset 2px 3px 6px rgba(255, 255, 255, 0.9),
+    0 0 0 1px rgba(255, 248, 228, 0.6),
+    0 0 18px 2px rgba(255, 232, 170, 0.9),
+    0 0 48px 6px rgba(255, 206, 120, 0.5);
+  animation: breathe 7s ease-in-out infinite;
+}
+
+.moon {
+  width: 50px;
+  height: 50px;
+  margin: -25px 0 0 -25px;
+}
+
+.moon-halo {
+  position: absolute;
+  inset: -46px;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    rgba(214, 210, 255, 0.34) 0%,
     rgba(178, 174, 245, 0.14) 30%,
     rgba(150, 146, 235, 0.05) 52%,
-    rgba(150, 146, 235, 0) 74%
+    rgba(150, 146, 235, 0) 72%
   );
   animation: breathe 13s ease-in-out infinite;
+}
+
+/* The unlit part of the disc, faintly visible -- earthshine. Small, but it is
+   what makes the crescent read as a sphere instead of a cut-out shape. */
+.moon-earthshine {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: radial-gradient(circle at 70% 30%, rgba(160, 152, 220, 0.22), rgba(90, 84, 160, 0.14) 70%);
+  box-shadow: inset 0 0 0 1px rgba(200, 196, 255, 0.1);
 }
 
 .moon-disc {
@@ -641,27 +554,14 @@ body[data-mode="dark"] .moon {
   inset: 0;
   border-radius: 50%;
   background:
-    /* craters, largest first -- subtle enough to read as texture, not spots */
-    radial-gradient(circle at 30% 62%, rgba(150, 143, 198, 0.5) 0%, rgba(150, 143, 198, 0.16) 42%, transparent 62%),
-    radial-gradient(circle at 46% 34%, rgba(158, 150, 205, 0.42) 0%, rgba(158, 150, 205, 0.12) 38%, transparent 58%),
-    radial-gradient(circle at 22% 40%, rgba(146, 139, 195, 0.36) 0%, transparent 52%),
-    radial-gradient(circle at 38% 80%, rgba(154, 147, 200, 0.3) 0%, transparent 48%),
-    radial-gradient(circle at 16% 74%, rgba(160, 153, 208, 0.24) 0%, transparent 44%),
-    /* soft limb darkening toward the terminator */
-    radial-gradient(circle at 30% 34%, #fdfcff 0%, #ece8fb 34%, #cfc8ee 66%, #ada5da 100%);
-  mask-image: radial-gradient(circle at 116% 16%, transparent 54%, #000 55.5%);
-  -webkit-mask-image: radial-gradient(circle at 116% 16%, transparent 54%, #000 55.5%);
-  filter: drop-shadow(0 0 10px rgba(200, 196, 255, 0.5));
+    radial-gradient(circle at 30% 62%, rgba(150, 143, 198, 0.5) 0%, rgba(150, 143, 198, 0.14) 40%, transparent 60%),
+    radial-gradient(circle at 44% 34%, rgba(158, 150, 205, 0.4) 0%, rgba(158, 150, 205, 0.1) 36%, transparent 56%),
+    radial-gradient(circle at 22% 40%, rgba(146, 139, 195, 0.34) 0%, transparent 50%),
+    radial-gradient(circle at 38% 80%, rgba(154, 147, 200, 0.28) 0%, transparent 46%),
+    radial-gradient(circle at 30% 34%, #fefdff 0%, #eeeafc 34%, #d2cbef 66%, #b0a8dc 100%);
+  mask-image: radial-gradient(circle at 112% 18%, transparent 56%, #000 57.5%);
+  filter: drop-shadow(0 0 10px rgba(200, 196, 255, 0.55));
   animation: breathe 9s ease-in-out infinite;
-}
-
-/* Bright rim along the lit limb. */
-.moon-disc::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: 50%;
-  background: radial-gradient(circle at 34% 30%, rgba(255, 255, 255, 0.85) 0%, rgba(255, 255, 255, 0) 30%);
 }
 
 @keyframes spin {
@@ -677,33 +577,9 @@ body[data-mode="dark"] .moon {
     opacity: 0.94;
   }
   50% {
-    transform: scale(1.045);
+    transform: scale(1.04);
     opacity: 1;
   }
-}
-
-/* ------------------------------------------------- scrim + flip sweep ----- */
-
-/* Keeps the controls legible over whatever the sky is doing behind them. */
-.scrim {
-  position: absolute;
-  inset: 0;
-  transition: background var(--sky-fade) ease;
-  background: linear-gradient(
-    180deg,
-    rgba(255, 250, 238, 0) 34%,
-    rgba(255, 250, 240, 0.34) 62%,
-    rgba(255, 250, 240, 0.52) 100%
-  );
-}
-
-body[data-mode="dark"] .scrim {
-  background: linear-gradient(
-    180deg,
-    rgba(12, 10, 34, 0) 34%,
-    rgba(14, 11, 38, 0.34) 62%,
-    rgba(12, 9, 32, 0.52) 100%
-  );
 }
 
 /* One-shot wash of light across the card as the mode flips. */
@@ -715,21 +591,11 @@ body[data-mode="dark"] .scrim {
 
 .popup.is-sweeping .sweep {
   animation: sweep-pass var(--sweep) ease-out;
-  background: linear-gradient(
-    155deg,
-    rgba(255, 236, 190, 0) 30%,
-    rgba(255, 240, 205, 0.5) 50%,
-    rgba(255, 236, 190, 0) 70%
-  );
+  background: linear-gradient(155deg, rgba(255, 236, 190, 0) 30%, rgba(255, 240, 205, 0.5) 50%, rgba(255, 236, 190, 0) 70%);
 }
 
 body[data-mode="dark"] .popup.is-sweeping .sweep {
-  background: linear-gradient(
-    155deg,
-    rgba(178, 180, 255, 0) 30%,
-    rgba(196, 198, 255, 0.34) 50%,
-    rgba(178, 180, 255, 0) 70%
-  );
+  background: linear-gradient(155deg, rgba(178, 180, 255, 0) 30%, rgba(196, 198, 255, 0.3) 50%, rgba(178, 180, 255, 0) 70%);
 }
 
 @keyframes sweep-pass {
@@ -746,347 +612,708 @@ body[data-mode="dark"] .popup.is-sweeping .sweep {
   }
 }
 
-/* ----------------------------------------------------------- content ------ */
+/* ------------------------------------------------------------- hero ------- */
 
 .hero {
   position: relative;
   z-index: 2;
-  flex: 0 0 178px;
-  height: 178px;
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
+  flex: 0 0 auto;
+  height: 296px;
+  transition: height var(--morph) var(--ease-out);
 }
 
-.hero-text {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 0 20px 10px;
-  text-align: center;
+.hero p {
+  margin: 0;
+  position: absolute;
+  white-space: nowrap;
+  transform-origin: 0 0;
+  transition:
+    left var(--morph) var(--ease-out),
+    top var(--morph) var(--ease-out),
+    transform var(--morph) var(--ease-out),
+    opacity calc(var(--morph) * 0.6) ease;
+}
+
+.wordmark {
+  left: 16px;
+  top: 14px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  opacity: 0.55;
 }
 
 .status {
-  margin: 0;
-  font-size: 30px;
-  font-weight: 600;
-  letter-spacing: -0.035em;
-  transition: color var(--sky-fade) ease;
-  text-shadow: 0 1px 12px rgba(255, 250, 235, 0.5);
+  left: 50%;
+  top: 190px;
+  transform: translateX(-50%) scale(1);
+  font-size: 38px;
+  font-weight: 650;
+  letter-spacing: -0.04em;
+  line-height: 1;
+  text-shadow: 0 1px 14px rgba(255, 250, 235, 0.55);
 }
 
 body[data-mode="dark"] .status {
-  text-shadow: 0 1px 16px rgba(10, 8, 30, 0.7);
+  text-shadow: 0 1px 18px rgba(10, 8, 30, 0.7);
 }
 
 .until {
-  margin: 3px 0 0;
-  font-size: 13px;
-  opacity: 0.6;
+  left: 50%;
+  top: 234px;
+  transform: translateX(-50%) scale(1);
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--ink-soft);
+  font-variant-numeric: tabular-nums;
 }
+
+/* Drawer open: the hero folds into a header strip. Sun to the corner, title
+   beside it -- the same objects, moved, rather than swapped for new ones. */
+.popup[data-view="sites"] .hero {
+  height: 78px;
+}
+
+.popup[data-view="sites"] .celestial {
+  transform: translate(-91px, -70px) scale(0.46);
+}
+
+.popup[data-view="sites"] .wordmark {
+  opacity: 0;
+  top: 0;
+}
+
+.popup[data-view="sites"] .status {
+  left: 66px;
+  top: 19px;
+  transform: translateX(0) scale(0.62);
+}
+
+.popup[data-view="sites"] .until {
+  left: 66px;
+  top: 45px;
+  transform: translateX(0) scale(0.96);
+}
+
+/* ------------------------------------------------------------ glass ------- */
 
 .ui {
   position: relative;
   z-index: 2;
-  padding: 0 20px 18px;
+  flex: 1 1 auto;
+  min-height: 0;
   display: flex;
   flex-direction: column;
-  align-items: center;
-}
-
-.times {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  width: 100%;
-  margin-bottom: 14px;
-}
-
-.time {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
-}
-
-/* The glass. backdrop-filter samples the sky layers painted behind these, which
-   is why the sky has to be full-bleed rather than confined to the hero. */
-.sites-row,
-.add-line input,
-.mode,
-.plus {
-  background: var(--glass);
-  border: 1px solid var(--glass-edge);
-  backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.35),
-    0 2px 10px rgba(40, 32, 12, 0.06);
-  transition: background var(--sky-fade) ease, border-color var(--sky-fade) ease,
-    box-shadow 200ms ease;
-}
-
-body[data-mode="dark"] .sites-row,
-body[data-mode="dark"] .add-line input,
-body[data-mode="dark"] .mode,
-body[data-mode="dark"] .plus {
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.08),
-    0 2px 12px rgba(0, 0, 0, 0.22);
+  padding: 0 14px 14px;
 }
 
 /*
- * Bare text, not a field. It still takes focus and typing exactly as before --
- * only the box is gone, which is the whole point: the times should read as part
- * of the sky, and a chrome input box fights that.
+ * Frosted glass, in four layers:
+ *   1. a top-to-bottom fill so the panel is denser where light enters,
+ *   2. fine grain, which is what stops a blur from reading as plain transparency,
+ *   3. a gradient rim (::before) brightest on the lit edge,
+ *   4. a soft sheen (::after) across the top.
+ * backdrop-filter does the refraction -- the hills and clouds behind are what
+ * give it something to bend.
  */
-.time input {
-  width: 100%;
-  border: 0;
-  background: transparent;
-  padding: 2px 0 3px;
-  border-radius: 0;
-  color: inherit;
-  text-align: center;
-  font: 600 27px/1.15 "Inter", "Segoe UI", system-ui, sans-serif;
-  letter-spacing: -0.03em;
-  outline: none;
-  /* The only affordance: a hairline that fills in on focus. */
-  box-shadow: inset 0 -1px 0 rgba(128, 116, 92, 0);
-  transition: box-shadow 180ms ease, opacity 180ms ease;
-  text-shadow: 0 1px 10px rgba(255, 250, 235, 0.45);
+.glass {
+  position: relative;
+  isolation: isolate;
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .07 0'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)'/%3E%3C/svg%3E"),
+    linear-gradient(180deg, var(--glass-top), var(--glass-bottom));
+  backdrop-filter: blur(22px) saturate(185%) brightness(1.04);
+  box-shadow: var(--glass-shadow);
+  transition: box-shadow var(--sky-fade) ease;
 }
 
-body[data-mode="dark"] .time input {
-  text-shadow: 0 1px 12px rgba(10, 8, 30, 0.6);
+body[data-mode="dark"] .glass {
+  backdrop-filter: blur(22px) saturate(160%) brightness(1.02);
+}
+
+.glass::before,
+.glass::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  pointer-events: none;
+}
+
+.glass::before {
+  padding: 1px;
+  background: var(--glass-rim);
+  mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  mask-composite: exclude;
+}
+
+.glass::after {
+  background: var(--glass-sheen);
+}
+
+.card {
+  border-radius: 22px;
+  flex: 0 1 auto;
+  min-height: 0;
+  margin-bottom: 12px;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ------------------------------------------------------------ times ------- */
+
+.times {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  padding: 13px 16px 12px;
+}
+
+.time {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  cursor: text;
+}
+
+.time:last-child {
+  align-items: flex-end;
+}
+
+.time-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  color: var(--ink-soft);
+}
+
+.time-label svg,
+.seg svg,
+.icon-btn svg,
+.chevron,
+.remove svg {
+  width: 12px;
+  height: 12px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.time-label svg {
+  opacity: 0.85;
+}
+
+/* Bare text, not a field: the only affordance is a hairline on hover/focus. */
+.time input {
+  width: 3.1em;
+  border: 0;
+  background: transparent;
+  padding: 0 0 2px;
+  margin: 0;
+  color: inherit;
+  font-family: inherit;
+  font-size: 26px;
+  font-weight: 650;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.035em;
+  outline: none;
+  border-radius: 0;
+  box-shadow: inset 0 -1.5px 0 transparent;
+  transition: box-shadow 180ms ease, font-size var(--morph) var(--ease-out);
+}
+
+.time:last-child input {
+  text-align: right;
 }
 
 .time input:hover {
-  box-shadow: inset 0 -1px 0 rgba(128, 116, 92, 0.22);
+  box-shadow: inset 0 -1.5px 0 var(--hairline);
 }
 
 .time input:focus {
   box-shadow: inset 0 -2px 0 var(--accent);
 }
 
-body[data-mode="dark"] .time input:hover {
-  box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.22);
-}
-
 .time input::selection {
-  background: rgba(160, 130, 60, 0.22);
+  background: var(--accent-soft);
 }
 
-body[data-mode="dark"] .time input::selection {
-  background: rgba(180, 178, 255, 0.28);
+.popup[data-view="sites"] .time input {
+  font-size: 21px;
 }
 
-.time span,
-.hint {
-  font-size: 11px;
-  opacity: 0.55;
+/* The schedule as a line: the dot is "now", travelling toward the next flip. */
+.track {
+  position: relative;
+  flex: 1;
+  height: 2px;
+  margin-bottom: 13px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, rgba(232, 160, 48, 0.55), rgba(120, 112, 220, 0.55));
+  transition: margin var(--morph) var(--ease-out);
 }
 
-.arrow {
-  opacity: 0.4;
-  font-size: 14px;
-  padding-bottom: 16px;
+body[data-mode="dark"] .track {
+  background: linear-gradient(90deg, rgba(240, 196, 120, 0.4), rgba(170, 164, 255, 0.5));
 }
 
-.sites-row {
-  width: 100%;
+.popup[data-view="sites"] .track {
+  margin-bottom: 11px;
+}
+
+.track-dot {
+  position: absolute;
+  top: 50%;
+  left: var(--progress, 50%);
+  width: 8px;
+  height: 8px;
+  margin: -4px 0 0 -4px;
+  border-radius: 50%;
+  background: #fff6de;
+  box-shadow: 0 0 0 2px rgba(232, 160, 48, 0.5), 0 0 10px 2px rgba(255, 196, 96, 0.8);
+  transition: left 700ms var(--ease-out), background var(--sky-fade) ease, box-shadow var(--sky-fade) ease;
+}
+
+body[data-mode="dark"] .track-dot {
+  background: #ecebff;
+  box-shadow: 0 0 0 2px rgba(150, 144, 255, 0.45), 0 0 10px 2px rgba(170, 164, 255, 0.7);
+}
+
+/* ------------------------------------------------------------ sites ------- */
+
+.sites {
+  border-top: 1px solid var(--hairline);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.sites-bar {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 4px 4px 4px 14px;
-  border-radius: 999px;
+  gap: 6px;
+  padding: 7px 8px 7px 10px;
 }
 
 .sites-toggle {
   flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  height: 34px;
+  padding: 0 8px 0 6px;
   border: 0;
+  border-radius: 12px;
   background: transparent;
-  color: inherit;
-  font: 500 13px/1 "Inter", "Segoe UI", system-ui, sans-serif;
   text-align: left;
-  padding: 8px 0;
   cursor: pointer;
+  transition: background 160ms ease;
 }
 
-.sites-panel {
-  width: 100%;
-  animation: panel-in 260ms ease;
+.sites-toggle:hover {
+  background: var(--row-hover);
 }
 
-/* Starts partly visible on purpose: the sites list is functional UI, so it must
-   never depend on an animation finishing to be readable. */
-@keyframes panel-in {
-  from {
-    opacity: 0.35;
-    transform: translateY(-6px);
+.sites-count {
+  font-size: 13px;
+  font-weight: 550;
+  letter-spacing: -0.01em;
+}
+
+.chevron {
+  margin-left: auto;
+  width: 14px;
+  height: 14px;
+  opacity: 0.55;
+  transition: transform var(--morph) var(--ease-out);
+}
+
+.popup[data-view="sites"] .chevron {
+  transform: rotate(180deg);
+}
+
+/* Overlapping favicons -- the collapsed list still shows you what is in it. */
+.stack {
+  display: flex;
+  padding-left: 5px;
+  transition:
+    opacity calc(var(--morph) * 0.5) ease,
+    max-width var(--morph) var(--ease-out),
+    margin var(--morph) var(--ease-out);
+  max-width: 120px;
+  overflow: hidden;
+}
+
+.stack .tile {
+  margin-left: -5px;
+  box-shadow: 0 0 0 1.5px var(--stack-ring, rgba(255, 252, 245, 0.95));
+}
+
+body[data-mode="dark"] .stack .tile {
+  --stack-ring: rgba(40, 34, 84, 0.95);
+}
+
+.popup[data-view="sites"] .stack {
+  opacity: 0;
+  max-width: 0;
+  margin-right: -8px;
+}
+
+.icon-btn {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--chip);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.5), 0 1px 3px rgba(0, 0, 0, 0.06);
+  cursor: pointer;
+  transition: background 160ms ease, transform 160ms ease;
+}
+
+body[data-mode="dark"] .icon-btn {
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+}
+
+.icon-btn:hover {
+  background: var(--thumb);
+}
+
+.icon-btn:active {
+  transform: scale(0.94);
+}
+
+.icon-btn svg {
+  width: 14px;
+  height: 14px;
+  stroke-width: 1.7;
+  transition: transform 380ms var(--spring);
+}
+
+/* + turns into × while the add field is open. */
+.popup.is-adding .icon-btn svg {
+  transform: rotate(45deg);
+}
+
+/* Height animation without measuring: a one-row grid tweened 0fr -> 1fr. */
+.collapse {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  transition:
+    grid-template-rows var(--morph) var(--ease-out),
+    opacity calc(var(--morph) * 0.7) ease;
+}
+
+.collapse > * {
+  min-height: 0;
+  overflow: hidden;
+}
+
+.popup.is-adding .add-wrap,
+.popup[data-view="sites"] .drawer {
+  grid-template-rows: 1fr;
+  opacity: 1;
+}
+
+.add-form {
+  display: flex;
+  gap: 6px;
+  padding: 0 10px;
+}
+
+.popup.is-adding .add-form {
+  padding-bottom: 8px;
+}
+
+.add-form input {
+  flex: 1;
+  min-width: 0;
+  height: 34px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 11px;
+  background: var(--chip);
+  box-shadow: inset 0 0 0 1px var(--hairline);
+  color: inherit;
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 500;
+  outline: none;
+  transition: box-shadow 160ms ease;
+}
+
+.add-form input::placeholder {
+  color: var(--ink-soft);
+  opacity: 0.8;
+}
+
+.add-form input:focus {
+  box-shadow: inset 0 0 0 1.5px var(--accent), 0 0 0 3px var(--accent-soft);
+}
+
+.add-form.is-invalid input {
+  animation: shake 320ms ease;
+  box-shadow: inset 0 0 0 1.5px #d0553a;
+}
+
+@keyframes shake {
+  25% {
+    transform: translateX(-4px);
+  }
+  75% {
+    transform: translateX(4px);
   }
 }
 
-.sites-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 8px;
-}
-
-.sites-label {
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  opacity: 0.5;
-}
-
-.plus {
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  color: inherit;
-  font-size: 18px;
-  line-height: 1;
-  cursor: pointer;
-  flex-shrink: 0;
-}
-
-.plus:hover,
-.mode:hover,
-.sites-row:hover {
-  border-color: rgba(255, 255, 255, 0.7);
-}
-
-body[data-mode="dark"] .plus:hover,
-body[data-mode="dark"] .mode:hover,
-body[data-mode="dark"] .sites-row:hover {
-  border-color: rgba(255, 255, 255, 0.26);
-}
-
 .add-submit {
-  border-radius: 10px;
+  height: 34px;
+  padding: 0 13px;
+  border: 0;
+  border-radius: 11px;
+  background: var(--ink);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background var(--sky-fade) ease, transform 140ms ease;
 }
 
-/* One quiet surface with hairline-separated rows, rather than four stacked
-   cards. Less structure to read, and the sky stays visible through it. */
+body[data-mode="dark"] .add-submit {
+  color: #17133a;
+}
+
+.add-submit:active {
+  transform: scale(0.96);
+}
+
+.drawer-scroll {
+  max-height: 238px;
+  overflow-y: auto;
+  mask-image: linear-gradient(180deg, #000 calc(100% - 18px), transparent);
+  scrollbar-width: thin;
+  scrollbar-color: var(--hairline) transparent;
+  padding: 0 8px 10px;
+  transition: max-height var(--morph) var(--ease-out);
+}
+
+.popup.is-adding .drawer-scroll {
+  max-height: 196px;
+}
+
 .site-list {
   list-style: none;
   margin: 0;
   padding: 0;
-  display: flex;
-  flex-direction: column;
 }
 
 .site-list li {
   display: flex;
   align-items: center;
-  gap: 9px;
-  min-height: 38px;
-  padding: 0 6px 0 2px;
-  border-radius: 8px;
-  background: transparent;
-  border: 0;
-  box-shadow: inset 0 -1px 0 rgba(120, 108, 84, 0.14);
+  gap: 10px;
+  height: 38px;
+  padding: 0 4px 0 8px;
+  border-radius: 12px;
   transition: background 160ms ease;
 }
 
-body[data-mode="dark"] .site-list li {
-  box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.09);
-}
-
-.site-list li:last-child {
-  box-shadow: none;
-}
-
 .site-list li:hover {
-  background: rgba(255, 255, 255, 0.28);
+  background: var(--row-hover);
 }
 
-body[data-mode="dark"] .site-list li:hover {
-  background: rgba(255, 255, 255, 0.07);
+/* Rows cascade in when the drawer opens. Only then -- a re-render after a
+   storage change must not replay it. */
+.drawer.is-entering .site-list li {
+  animation: row-in 460ms var(--ease-out) both;
+  animation-delay: calc(90ms + var(--i, 0) * 32ms);
 }
 
-.site-favicon {
-  width: 16px;
-  height: 16px;
-  border-radius: 4px;
-  flex-shrink: 0;
-  object-fit: contain;
-  background: rgba(255, 255, 255, 0.18);
+.site-list li.is-new {
+  animation: row-in 460ms var(--ease-out) both, flash 1100ms ease 120ms;
 }
 
-.site-favicon.is-fallback {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 9px;
-  font-weight: 600;
+.site-list li.is-flash {
+  animation: flash 1100ms ease;
+}
+
+@keyframes row-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.98);
+  }
+}
+
+@keyframes flash {
+  0%,
+  100% {
+    background: transparent;
+  }
+  30% {
+    background: var(--accent-soft);
+  }
+}
+
+/* Favicon on a small glass tile, so mismatched icons sit on a common ground. */
+.tile {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.82);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.05);
+  overflow: hidden;
+}
+
+body[data-mode="dark"] .tile:not(.is-monogram) {
+  background: rgba(255, 255, 255, 0.9);
+}
+
+.stack .tile {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+}
+
+.tile img {
+  width: 14px;
+  height: 14px;
+  display: block;
+}
+
+.stack .tile img {
+  width: 12px;
+  height: 12px;
+}
+
+.tile.is-monogram {
+  background: linear-gradient(145deg, hsl(var(--hue) 70% 66%), hsl(calc(var(--hue) + 28) 62% 50%));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35);
+  color: #fff;
+  font-size: 10.5px;
+  font-weight: 700;
   text-transform: uppercase;
-  color: inherit;
-  opacity: 0.65;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.15);
+}
+
+.stack .tile.is-monogram {
+  font-size: 9px;
+}
+
+.stack .more {
+  margin-left: 6px;
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--ink-soft);
+  align-self: center;
 }
 
 .host {
   flex: 1;
-  font-size: 12px;
+  min-width: 0;
+  font-size: 12.5px;
+  font-weight: 500;
+  letter-spacing: -0.005em;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.sync {
-  font-family: inherit;
-  font-size: 10px;
-  letter-spacing: 0.04em;
-  color: inherit;
-  background: transparent;
-  padding: 2px 7px;
-  border: 1px solid currentColor;
-  border-radius: 999px;
-  cursor: pointer;
-  opacity: 0.3;
+.deep {
   flex-shrink: 0;
-  transition: opacity 120ms ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 20px;
+  padding: 0 8px 0 7px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  box-shadow: inset 0 0 0 1px var(--hairline);
+  color: var(--ink-soft);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  cursor: pointer;
+  transition: background 200ms ease, color 200ms ease, box-shadow 200ms ease;
 }
 
-.sync:hover {
-  opacity: 0.6;
+.deep::before {
+  content: "";
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.4;
+  transition: opacity 200ms ease, box-shadow 200ms ease;
 }
 
-.sync.is-on {
+.deep:hover {
+  color: var(--ink);
+}
+
+.deep.is-on {
   color: var(--accent);
-  border-color: rgba(125, 84, 16, 0.45);
-  background: rgba(125, 84, 16, 0.1);
+  background: var(--accent-soft);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 35%, transparent);
+}
+
+.deep.is-on::before {
+  opacity: 1;
+  box-shadow: 0 0 6px currentColor;
+}
+
+.remove {
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--ink-soft);
+  opacity: 0.6;
+  cursor: pointer;
+  transition: opacity 140ms ease, background 140ms ease;
+}
+
+.remove svg {
+  width: 10px;
+  height: 10px;
+  stroke-width: 1.8;
+}
+
+.site-list li:hover .remove {
   opacity: 1;
 }
 
-body[data-mode="dark"] .sync.is-on {
-  border-color: rgba(233, 199, 145, 0.35);
-  background: rgba(233, 199, 145, 0.1);
-}
-
-@keyframes daylight-flash {
-  0%,
-  100% {
-    background: transparent;
-  }
-  35% {
-    background: rgba(200, 150, 60, 0.26);
-  }
-}
-
-.site-list li.is-flash {
-  animation: daylight-flash 900ms ease;
+.remove:hover {
+  background: var(--row-hover);
+  color: var(--ink);
 }
 
 .sync-hint {
-  margin: 10px 0 0;
-  font-size: 10px;
-  line-height: 1.4;
-  opacity: 0.5;
+  margin: 8px 6px 0;
+  font-size: 10.5px;
+  line-height: 1.45;
+  color: var(--ink-soft);
   text-align: center;
 }
 
@@ -1095,86 +1322,81 @@ body[data-mode="dark"] .sync.is-on {
   color: var(--accent);
 }
 
-.remove {
-  width: 22px;
-  height: 22px;
-  border: 0;
-  background: transparent;
-  color: inherit;
-  opacity: 0.4;
-  cursor: pointer;
-  font-size: 14px;
-  flex-shrink: 0;
+.empty {
+  padding: 14px 0 4px;
+  font-size: 12px;
+  color: var(--ink-soft);
+  text-align: center;
 }
 
-.remove:hover {
-  opacity: 0.8;
-}
+/* -------------------------------------------------------- segmented ------- */
 
-.add-form {
-  margin-bottom: 10px;
-}
-
-.add-line {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-}
-
-.add-line input {
-  flex: 1;
-  height: 36px;
-  border-radius: 12px;
-  color: inherit;
-  padding: 0 12px;
-  font: 13px/1 "Inter", "Segoe UI", system-ui, sans-serif;
-  outline: none;
-}
-
-.add-line input:focus {
-  border-color: rgba(255, 255, 255, 0.75);
-  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.18);
-}
-
-body[data-mode="dark"] .add-line input:focus {
-  border-color: rgba(180, 178, 255, 0.5);
-  box-shadow: 0 0 0 3px rgba(140, 138, 235, 0.2);
-}
-
-.add-form:not([hidden]) + .site-list {
-  margin-top: 0;
-}
-
-.hint {
-  margin: 6px 0 0;
-}
-
-.mode {
-  margin-top: 16px;
-  height: 34px;
-  padding: 0 16px;
+.segmented {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  margin-top: auto;
+  flex: 0 0 auto;
+  height: 38px;
+  padding: 3px;
   border-radius: 999px;
-  color: inherit;
-  font: 500 12px/1 "Inter", "Segoe UI", system-ui, sans-serif;
-  cursor: pointer;
+}
+
+.seg-thumb {
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  left: 3px;
+  width: calc((100% - 6px) / 3);
+  border-radius: 999px;
+  background: var(--thumb);
+  box-shadow: var(--thumb-shadow);
+  transform: translateX(calc(var(--seg, 0) * 100%));
+  transition: transform 460ms var(--spring), background var(--sky-fade) ease;
+}
+
+.seg {
+  position: relative;
+  z-index: 1;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  justify-content: center;
+  gap: 5px;
+  border: 0;
+  background: transparent;
+  color: var(--ink-soft);
+  font-size: 12px;
+  font-weight: 550;
+  cursor: pointer;
+  border-radius: 999px;
+  transition: color 240ms ease;
 }
 
-.mode-icon {
-  font-size: 13px;
-  opacity: 0.55;
-  line-height: 1;
-  transition: transform 500ms var(--ease);
+.seg svg {
+  width: 13px;
+  height: 13px;
 }
 
-.mode:hover .mode-icon {
-  transform: rotate(180deg);
+.seg svg .fill {
+  fill: currentColor;
+  stroke: none;
 }
 
-.mode:not([data-override="auto"]) {
-  color: var(--accent);
+.seg:hover,
+.seg[aria-checked="true"] {
+  color: var(--ink);
+}
+
+/* ------------------------------------------------------------- focus ------ */
+
+button:focus-visible,
+.time input:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.time input:focus-visible {
+  outline: none;
 }
 
 [hidden] {
@@ -1184,13 +1406,18 @@ body[data-mode="dark"] .add-line input:focus {
 /* ------------------------------------------------------------ motion ------ */
 
 @media (prefers-reduced-motion: reduce) {
+  :root {
+    --morph: 1ms;
+  }
+
   .star,
   .cloud,
   .sun-disc,
   .sun-rays,
-  .sun-streak,
+  .sun-corona,
   .moon-disc,
-  .sites-panel {
+  .moon-halo,
+  .site-list li {
     animation: none !important;
   }
 
