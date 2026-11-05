@@ -3,3 +3,4 @@ package-lock.json
 download/daylight.xpi
 download/daylight.zip
 dist/
+design/launch/*.mp4

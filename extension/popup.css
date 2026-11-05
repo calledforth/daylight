@@ -1034,6 +1034,8 @@ body[data-mode="dark"] .icon-btn {
   display: flex;
   gap: 6px;
   padding: 0 10px;
+  /* Eased with the row itself, or the list jumps 8px before the field opens. */
+  transition: padding-bottom var(--morph) var(--ease-out);
 }
 
 .popup.is-adding .add-form {
